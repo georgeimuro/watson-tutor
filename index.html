@@ -1,0 +1,3498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Watson Tutor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,800;1,400;1,600&family=DM+Sans:wght@400;500;600&family=IBM+Plex+Mono:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<!-- Japanese annotation: kuroshiro runs in Web Worker with local dictionary -->
+<style>
+  :root {
+    --bg: #0e0c0a;
+    --surface: #171411;
+    --surface2: #1e1a16;
+    --surface3: #262119;
+    --parchment: #1c1914;
+    --parchment-light: #2a2520;
+    --border: #302a22;
+    --border-light: #3d352b;
+    --text: #e8e0d4;
+    --text2: #968c7c;
+    --text3: #6b6055;
+    --amber: #c8943e;
+    --amber-soft: rgba(200, 148, 62, 0.10);
+    --amber-glow: rgba(200, 148, 62, 0.25);
+    --burgundy: #8b3a3a;
+    --burgundy-soft: rgba(139, 58, 58, 0.15);
+    --brass: #a68a5b;
+    --brass-dark: #7a6842;
+    --green: #6b9b6b;
+    --red: #b04a3a;
+    --cream: #d4c8b0;
+    --heading: 'Playfair Display', Georgia, 'Times New Roman', serif;
+    --body: 'DM Sans', system-ui, sans-serif;
+    --mono: 'IBM Plex Mono', 'Courier New', monospace;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: var(--body);
+    background: var(--bg);
+    color: var(--text);
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  /* Warm grain + fog */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    opacity: 0.035;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  /* The study — Elegant Reader painting as atmosphere */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse at center, transparent 30%, rgba(14, 12, 10, 0.85) 100%),
+      url('reader.jpg') center/cover no-repeat;
+    opacity: 0.10;
+    pointer-events: none;
+    z-index: -1;
+    filter: sepia(0.3) saturate(0.5);
+  }
+
+  /* The Bookworm — Watson's portrait, right side */
+  .watson-portrait {
+    position: fixed;
+    right: -80px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 380px;
+    height: auto;
+    opacity: 0.45;
+    pointer-events: none;
+    z-index: -1;
+    mask-image: radial-gradient(ellipse 90% 95% at 80% 50%, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.4) 55%, transparent 85%);
+    -webkit-mask-image: radial-gradient(ellipse 90% 95% at 80% 50%, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.4) 55%, transparent 85%);
+  }
+
+  /* ── Case Board Sidebar ── */
+  .case-board {
+    position: fixed;
+    left: 0;
+    top: 50px;
+    bottom: 0;
+    width: 280px;
+    background: linear-gradient(180deg, var(--surface) 0%, var(--bg) 100%);
+    border-right: none;
+    padding: 16px 14px;
+    box-shadow: 20px 0 40px -20px rgba(0,0,0,0.5);
+    overflow-y: auto;
+    z-index: 10;
+    display: none;
+  }
+
+  .case-board.visible { display: block; }
+
+  .case-board::-webkit-scrollbar { width: 3px; }
+  .case-board::-webkit-scrollbar-thumb { background: var(--border); }
+
+  .case-board-toggle {
+    display: none;
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text2);
+    font-size: 14px;
+    cursor: pointer;
+    padding: 5px 8px;
+    border-radius: 4px;
+    transition: all 0.2s;
+  }
+
+  .case-board-toggle:hover { color: var(--amber); border-color: var(--amber); }
+
+  /* Show toggle + sidebar on wide screens */
+  @media (min-width: 900px) {
+    .case-board { display: block; }
+    .case-board.hidden { display: none !important; }
+    .case-board-toggle { display: inline-block; }
+    .setup-screen { margin-left: 280px; }
+    .session-screen { margin-left: 280px; }
+  }
+
+  .cb-header {
+    font-family: var(--heading);
+    font-size: 15px;
+    color: var(--cream);
+    font-style: italic;
+    margin-bottom: 14px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .moriarty {
+    display: inline-block;
+    font-size: 20px;
+    filter: drop-shadow(0 0 4px rgba(200, 60, 60, 0.3));
+  }
+
+  .cb-section-title {
+    font-family: var(--mono);
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--text3);
+    margin-top: 16px;
+    margin-bottom: 8px;
+  }
+
+  .cb-case {
+    padding: 8px 10px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--red);
+    border-radius: 3px;
+    margin-bottom: 6px;
+    font-size: 12px;
+    position: relative;
+  }
+
+  .cb-case.solved {
+    border-left-color: var(--green);
+    opacity: 0.6;
+  }
+
+  .cb-case .case-name {
+    font-family: var(--body);
+    font-weight: 600;
+    color: var(--cream);
+    font-size: 12px;
+  }
+
+  .cb-case.solved .case-name {
+    text-decoration: line-through;
+    color: var(--text2);
+  }
+
+  .cb-case .case-detail {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text3);
+    margin-top: 3px;
+    font-style: italic;
+  }
+
+  .cb-case .case-lang {
+    font-size: 10px;
+    position: absolute;
+    top: 8px;
+    right: 8px;
+  }
+
+  .cb-last-session {
+    padding: 10px;
+    background: var(--parchment);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    margin-top: 8px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--cream);
+    line-height: 1.6;
+  }
+
+  .cb-last-session .ls-date {
+    font-size: 10px;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .cb-achievements {
+    margin-top: 16px;
+    padding: 10px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    text-align: center;
+  }
+
+  .cb-achievements .ach-count {
+    font-family: var(--heading);
+    font-size: 22px;
+    color: var(--amber);
+    font-weight: 700;
+  }
+
+  .cb-achievements .ach-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-top: 2px;
+  }
+
+  /* Firelight glow */
+  .firelight {
+    content: '';
+    position: fixed;
+    bottom: -40%;
+    right: -20%;
+    width: 80%;
+    height: 80%;
+    background: radial-gradient(ellipse, rgba(200, 148, 62, 0.04) 0%, transparent 70%);
+    pointer-events: none;
+    animation: firelight 8s ease-in-out infinite alternate;
+  }
+
+  @keyframes firelight {
+    0% { opacity: 0.6; }
+    100% { opacity: 1; }
+  }
+
+  /* ── Header ── */
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 28px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    position: relative;
+  }
+
+  .header::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 40px;
+    height: 1px;
+    background: var(--amber);
+  }
+
+  .logo {
+    font-family: var(--heading);
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    color: var(--cream);
+  }
+
+  .logo span {
+    color: var(--amber);
+    font-weight: 400;
+    font-style: italic;
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  /* Gas lamp status */
+  .status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--text3);
+    transition: all 0.6s;
+    position: relative;
+  }
+
+  .status-dot.connected {
+    background: var(--amber);
+    box-shadow: 0 0 6px var(--amber-glow), 0 0 16px rgba(200, 148, 62, 0.15);
+  }
+
+  .status-dot.error { background: var(--red); }
+
+  .settings-btn {
+    background: none;
+    border: none;
+    color: var(--text3);
+    font-size: 16px;
+    cursor: pointer;
+    padding: 6px;
+    border-radius: 6px;
+    transition: all 0.3s;
+  }
+
+  .settings-btn:hover { color: var(--amber); }
+
+  .nav-btn {
+    background: var(--amber-soft);
+    border: 1px solid var(--amber);
+    color: var(--amber);
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    padding: 7px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.25s;
+  }
+
+  .nav-btn:hover { background: var(--amber); color: var(--bg); }
+
+  /* ── Progress Dashboard ── */
+  .progress-screen {
+    flex: 1;
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .progress-screen.active { display: flex; }
+
+  .progress-header {
+    padding: 20px 28px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--surface);
+  }
+
+  .progress-header h3 {
+    font-family: var(--heading);
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--cream);
+    font-style: italic;
+  }
+
+  .progress-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 28px;
+  }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+
+  .stat-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 20px;
+    text-align: center;
+  }
+
+  .stat-card .stat-value {
+    font-family: var(--heading);
+    font-size: 36px;
+    font-weight: 700;
+    color: var(--amber);
+    line-height: 1;
+  }
+
+  .stat-card .stat-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--text2);
+    margin-top: 8px;
+  }
+
+  .cefr-section {
+    margin-bottom: 28px;
+  }
+
+  .cefr-section h4 {
+    font-family: var(--heading);
+    font-size: 18px;
+    color: var(--cream);
+    margin-bottom: 16px;
+    font-style: italic;
+  }
+
+  .cefr-bar {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+    gap: 12px;
+  }
+
+  .cefr-bar .skill-name {
+    font-family: var(--mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text2);
+    width: 100px;
+    flex-shrink: 0;
+  }
+
+  .cefr-bar .bar-bg {
+    flex: 1;
+    height: 16px;
+    background: var(--surface2);
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+
+  .cefr-bar .bar-fill {
+    height: 100%;
+    border-radius: 8px;
+    transition: width 0.8s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .cefr-bar .bar-fill::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(255,255,255,0.15) 0%, transparent 50%);
+  }
+
+  .cefr-bar .level-label {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 600;
+    width: 44px;
+    text-align: right;
+    color: var(--amber);
+  }
+
+  .session-history {
+    margin-top: 8px;
+  }
+
+  .session-history h4 {
+    font-family: var(--heading);
+    font-size: 18px;
+    color: var(--cream);
+    margin-bottom: 16px;
+    font-style: italic;
+  }
+
+  .history-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    margin-bottom: 8px;
+    font-family: var(--mono);
+    font-size: 13px;
+  }
+
+  .history-item .date { color: var(--text2); }
+  .history-item .lang { color: var(--amber); text-transform: uppercase; letter-spacing: 1px; font-size: 11px; }
+  .history-item .duration { color: var(--cream); }
+
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text3);
+    font-family: var(--mono);
+    font-size: 14px;
+  }
+
+  /* ── Gamification ── */
+  .streak-calendar {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+    margin-bottom: 24px;
+    max-width: 280px;
+  }
+
+  .streak-day {
+    width: 100%;
+    aspect-ratio: 1;
+    border-radius: 4px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    color: var(--text3);
+    font-family: var(--mono);
+  }
+
+  .streak-day.active {
+    background: var(--amber-soft);
+    border-color: var(--amber);
+    color: var(--amber);
+    font-weight: 600;
+  }
+
+  .streak-day.today {
+    border-color: var(--cream);
+    color: var(--cream);
+  }
+
+  .milestone-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 14px 16px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    margin-bottom: 8px;
+  }
+
+  .milestone-icon {
+    font-size: 24px;
+    width: 40px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+
+  .milestone-info { flex: 1; }
+
+  .milestone-info .ms-title {
+    font-family: var(--heading);
+    font-size: 15px;
+    color: var(--cream);
+    font-weight: 600;
+  }
+
+  .milestone-info .ms-desc {
+    font-size: 12px;
+    color: var(--text2);
+    font-family: var(--mono);
+    margin-top: 2px;
+  }
+
+  .milestone-row.locked { opacity: 0.4; }
+  .milestone-row.achieved { border-color: var(--amber); }
+  .milestone-row.achieved .milestone-icon { filter: none; }
+  .milestone-row.locked .milestone-icon { filter: grayscale(1); }
+
+  .journey-section { margin-bottom: 28px; }
+
+  .journey-section h4 {
+    font-family: var(--heading);
+    font-size: 18px;
+    color: var(--cream);
+    margin-bottom: 16px;
+    font-style: italic;
+  }
+
+  .journey-line {
+    position: relative;
+    padding-left: 24px;
+  }
+
+  .journey-line::before {
+    content: '';
+    position: absolute;
+    left: 8px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: var(--border);
+  }
+
+  .journey-node {
+    position: relative;
+    padding: 12px 16px;
+    margin-bottom: 12px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-size: 13px;
+  }
+
+  .journey-node::before {
+    content: '';
+    position: absolute;
+    left: -20px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--surface2);
+    border: 2px solid var(--border);
+  }
+
+  .journey-node.done::before { background: var(--amber); border-color: var(--amber); }
+  .journey-node.current::before { background: var(--green); border-color: var(--green); box-shadow: 0 0 8px rgba(92,182,122,0.4); }
+  .journey-node.locked { opacity: 0.4; }
+
+  .journey-node .jn-title { font-weight: 600; color: var(--cream); }
+  .journey-node .jn-level { font-family: var(--mono); font-size: 11px; color: var(--text2); margin-top: 2px; }
+
+  /* ── Setup Screen ── */
+  .setup-screen {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 16px 24px;
+    gap: 16px;
+    position: relative;
+    overflow-y: auto;
+    justify-content: flex-start;
+    padding-top: 8px;
+  }
+
+  /* ── Lantern ── */
+  .lantern-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 8px;
+    animation: fadeUp 0.5s ease both;
+  }
+
+  .lantern {
+    position: relative;
+    width: 40px;
+    height: 60px;
+  }
+
+  /* Lantern body */
+  .lantern-body {
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 28px;
+    height: 40px;
+    border: 2px solid var(--brass);
+    border-radius: 4px 4px 6px 6px;
+    background: rgba(30, 26, 22, 0.8);
+    overflow: hidden;
+  }
+
+  /* Flame */
+  .lantern-flame {
+    position: absolute;
+    bottom: 6px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 8px;
+    height: 14px;
+    background: var(--amber);
+    border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+    opacity: 0;
+    transition: all 0.6s ease;
+  }
+
+  .lantern-flame.lit {
+    opacity: 1;
+    box-shadow: 0 0 8px var(--amber), 0 0 16px rgba(200, 148, 62, 0.3);
+    animation: flicker 2s ease-in-out infinite alternate;
+  }
+
+  .lantern-flame.bright {
+    opacity: 1;
+    width: 10px;
+    height: 18px;
+    box-shadow: 0 0 12px var(--amber), 0 0 28px rgba(200, 148, 62, 0.4), 0 0 48px rgba(200, 148, 62, 0.15);
+    animation: flicker 1.5s ease-in-out infinite alternate;
+  }
+
+  .lantern-flame.blazing {
+    opacity: 1;
+    width: 12px;
+    height: 22px;
+    background: linear-gradient(to top, #b07a28, var(--amber), #e0c060);
+    box-shadow: 0 0 16px var(--amber), 0 0 36px rgba(200, 148, 62, 0.5), 0 0 64px rgba(200, 148, 62, 0.2);
+    animation: flicker 1.2s ease-in-out infinite alternate;
+  }
+
+  @keyframes flicker {
+    0% { transform: translateX(-50%) scale(1) rotate(-1deg); }
+    50% { transform: translateX(-50%) scale(1.05) rotate(1deg); }
+    100% { transform: translateX(-50%) scale(0.97) rotate(-0.5deg); }
+  }
+
+  /* Lantern hook */
+  .lantern-hook {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 16px;
+    height: 12px;
+    border: 2px solid var(--brass);
+    border-bottom: none;
+    border-radius: 8px 8px 0 0;
+  }
+
+  /* Glow radiating from lantern */
+  .lantern-glow {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(200, 148, 62, 0.08) 0%, transparent 70%);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.6s;
+  }
+
+  .lantern-glow.on { opacity: 1; }
+  .lantern-glow.strong { opacity: 1; width: 120px; height: 120px; background: radial-gradient(circle, rgba(200, 148, 62, 0.12) 0%, transparent 70%); }
+
+  .lantern-streak {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text3);
+    margin-top: 4px;
+    letter-spacing: 1px;
+    transition: color 0.3s;
+  }
+
+  .lantern-streak.active { color: var(--amber); }
+
+  /* ── Language card progress ── */
+  .card-progress {
+    margin-top: 8px;
+    width: 100%;
+  }
+
+  .card-progress-bar {
+    height: 4px;
+    background: var(--surface3);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-top: 4px;
+  }
+
+  .card-progress-fill {
+    height: 100%;
+    background: var(--amber);
+    border-radius: 2px;
+    transition: width 0.5s ease;
+  }
+
+  .card-working-on {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text3);
+    margin-top: 6px;
+    font-style: italic;
+  }
+
+  .setup-title {
+    text-align: center;
+    animation: fadeUp 0.7s ease both;
+  }
+
+  .setup-title h2 {
+    font-family: var(--heading);
+    font-size: 36px;
+    font-weight: 700;
+    line-height: 1.2;
+    color: var(--cream);
+    margin-bottom: 10px;
+  }
+
+  .setup-title h2 em {
+    color: var(--amber);
+    font-style: italic;
+    font-weight: 400;
+  }
+
+  .setup-title p {
+    color: var(--text2);
+    font-size: 14px;
+    line-height: 1.7;
+    max-width: 340px;
+    margin: 0 auto;
+    font-family: var(--mono);
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── Decorative divider ── */
+  .divider {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    color: var(--text3);
+    font-size: 11px;
+    font-family: var(--mono);
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    animation: fadeUp 0.7s ease 0.1s both;
+    width: 100%;
+    max-width: 420px;
+  }
+
+  .divider::before, .divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--border), transparent);
+  }
+
+  /* ── Case Dossier Cards ── */
+  .lang-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+    width: 100%;
+    max-width: 420px;
+    animation: fadeUp 0.7s ease 0.2s both;
+  }
+
+  .lang-card {
+    padding: 14px 14px;
+    background: var(--parchment);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Paper texture on cards */
+  .lang-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    opacity: 0.02;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.2' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    pointer-events: none;
+  }
+
+  /* Top edge — like a file tab */
+  .lang-card::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: var(--border);
+    transition: background 0.3s;
+  }
+
+  .lang-card:hover {
+    border-color: var(--brass-dark);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  }
+
+  .lang-card:hover::after { background: var(--brass); }
+
+  .lang-card.selected {
+    border-color: var(--amber);
+    background: var(--parchment-light);
+    box-shadow: 0 4px 20px rgba(200, 148, 62, 0.08);
+  }
+
+  .lang-card.selected::after { background: var(--amber); }
+
+  .lang-card .flag {
+    font-size: 32px;
+    display: block;
+    margin-bottom: 12px;
+    position: relative;
+  }
+
+  .lang-card .name {
+    font-family: var(--heading);
+    font-weight: 700;
+    font-size: 18px;
+    color: var(--cream);
+    position: relative;
+  }
+
+  .lang-card .tutor {
+    color: var(--text2);
+    font-size: 13px;
+    margin-top: 6px;
+    font-family: var(--heading);
+    font-style: italic;
+    font-weight: 400;
+    position: relative;
+  }
+
+  /* ── Buttons ── */
+  .btn {
+    padding: 14px 40px;
+    border-radius: 4px;
+    border: none;
+    font-family: var(--body);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.25s;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, var(--amber), #b07a28);
+    color: #0e0c0a;
+    animation: fadeUp 0.7s ease 0.35s both;
+    box-shadow: 0 2px 12px rgba(200, 148, 62, 0.2);
+  }
+
+  .btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 24px rgba(200, 148, 62, 0.3);
+  }
+
+  .btn-primary:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+
+  .mode-toggle {
+    display: flex;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .mode-btn {
+    padding: 10px 28px;
+    border: none;
+    background: transparent;
+    color: var(--text2);
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    cursor: pointer;
+    transition: all 0.25s;
+  }
+
+  .mode-btn.active {
+    background: var(--amber-soft);
+    color: var(--amber);
+    box-shadow: inset 0 -2px 0 var(--amber);
+  }
+
+  .mode-btn:hover:not(.active) { color: var(--cream); }
+
+  .btn-secondary {
+    background: var(--surface2);
+    color: var(--text2);
+    border: 1px solid var(--border);
+  }
+
+  .btn-secondary:hover {
+    border-color: var(--amber);
+    color: var(--amber);
+  }
+
+  /* ── Session Screen ── */
+  .session-screen {
+    flex: 1;
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .session-screen.active { display: flex; }
+
+  /* Transcript — case notes */
+  .transcript {
+    flex: 1;
+    overflow-y: auto;
+    padding: 28px 24px;
+    scroll-behavior: smooth;
+    background: linear-gradient(180deg, var(--bg) 0%, var(--parchment) 4%, var(--parchment) 96%, var(--bg) 100%);
+  }
+
+  .transcript::-webkit-scrollbar { width: 3px; }
+  .transcript::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .msg {
+    margin-bottom: 22px;
+    max-width: 80%;
+    animation: typeIn 0.3s ease;
+  }
+
+  @keyframes typeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .msg.user { margin-left: auto; text-align: right; }
+
+  .msg .sender {
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--text3);
+    margin-bottom: 6px;
+    font-family: var(--mono);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+  }
+
+  .msg.user .sender { color: var(--amber); }
+
+  .msg .bubble {
+    display: inline-block;
+    padding: 14px 18px;
+    border-radius: 4px;
+    font-family: var(--mono);
+    font-size: 14px;
+    line-height: 1.7;
+    text-align: left;
+  }
+
+  .msg.user .bubble {
+    background: var(--amber);
+    color: var(--bg);
+    font-weight: 500;
+    font-family: var(--body);
+    border-radius: 12px 12px 2px 12px;
+  }
+
+  .msg.tutor .bubble {
+    background: var(--surface3);
+    border: 1px solid var(--border-light);
+    color: var(--cream);
+    border-radius: 12px 12px 12px 2px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  }
+
+  /* ── Controls — brass instrument panel ── */
+  .controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 28px;
+    padding: 24px;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+    position: relative;
+  }
+
+  .controls::before {
+    content: '';
+    position: absolute;
+    top: -1px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 40px;
+    height: 1px;
+    background: var(--amber);
+  }
+
+  /* Brass mic button */
+  .mic-btn {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    border: 2px solid var(--border-light);
+    background: var(--surface3);
+    color: var(--text2);
+    font-size: 28px;
+    cursor: pointer;
+    transition: all 0.4s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+
+  /* Brass ring */
+  .mic-btn::before {
+    content: '';
+    position: absolute;
+    inset: -4px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    transition: border-color 0.4s;
+  }
+
+  .mic-btn:hover { border-color: var(--brass); }
+  .mic-btn:hover::before { border-color: var(--brass-dark); }
+
+  .mic-btn.listening {
+    background: radial-gradient(circle, var(--amber) 0%, #b07a28 100%);
+    color: var(--bg);
+    border-color: var(--amber);
+    box-shadow: 0 0 20px var(--amber-glow), 0 0 40px rgba(200, 148, 62, 0.1);
+    animation: lampGlow 3s ease-in-out infinite;
+  }
+
+  .mic-btn.listening::before { border-color: rgba(200, 148, 62, 0.3); }
+
+  @keyframes lampGlow {
+    0%, 100% { box-shadow: 0 0 20px var(--amber-glow), 0 0 40px rgba(200, 148, 62, 0.1); }
+    50% { box-shadow: 0 0 24px var(--amber-glow), 0 0 48px rgba(200, 148, 62, 0.15); }
+  }
+
+  .end-btn {
+    width: 42px;
+    height: 42px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--red);
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .end-btn:hover {
+    background: var(--red);
+    color: var(--cream);
+    border-color: var(--red);
+  }
+
+  /* Cheat sheet toggle */
+  .cheat-btn {
+    width: 42px;
+    height: 42px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text2);
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .cheat-btn:hover { border-color: var(--amber); color: var(--amber); }
+  .cheat-btn.active { background: var(--amber-soft); border-color: var(--amber); color: var(--amber); }
+
+  /* Cheat sheet panel */
+  .cheat-sheet {
+    display: none;
+    width: 260px;
+    border-left: 1px solid var(--border);
+    background: var(--surface);
+    overflow-y: auto;
+    padding: 16px;
+    flex-shrink: 0;
+  }
+
+  .cheat-sheet.visible { display: block; }
+
+  .cheat-sheet h4 {
+    font-family: var(--heading);
+    font-size: 15px;
+    color: var(--amber);
+    font-style: italic;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .cheat-word {
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+  }
+
+  .cheat-word .cw-term {
+    font-weight: 600;
+    color: var(--cream);
+    font-size: 15px;
+  }
+
+  .cheat-word .cw-meaning {
+    color: var(--text2);
+    font-family: var(--mono);
+    font-size: 12px;
+    margin-top: 2px;
+  }
+
+  .cheat-empty {
+    color: var(--text3);
+    font-family: var(--mono);
+    font-size: 12px;
+    font-style: italic;
+  }
+
+  /* Furigana for Japanese */
+  ruby { ruby-position: over; }
+  rt {
+    font-size: 0.7em;
+    color: var(--amber);
+    font-family: var(--body);
+    font-weight: 500;
+    letter-spacing: 0.5px;
+  }
+
+  .word-breakdown {
+    margin-top: 8px;
+    padding-top: 6px;
+    border-top: 1px solid var(--border);
+    cursor: pointer;
+  }
+
+  .breakdown-toggle {
+    font-size: 11px;
+    color: var(--text3);
+    font-family: var(--mono);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .breakdown-toggle:hover { color: var(--amber); }
+
+  /* Inline English meaning above each word (like furigana but with English) */
+  .tutor-annotated ruby rt {
+    font-size: 0.65em;
+    color: var(--green);
+    font-family: var(--mono);
+    font-weight: 400;
+  }
+
+  .breakdown-table {
+    display: none;
+    margin-top: 6px;
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 1.8;
+  }
+
+  .breakdown-table.open { display: block; }
+
+  .breakdown-row {
+    display: flex;
+    gap: 12px;
+    padding: 2px 0;
+    border-bottom: 1px solid rgba(48, 42, 34, 0.5);
+  }
+
+  .bd-kanji { color: var(--cream); font-size: 15px; min-width: 50px; }
+  .bd-reading { color: var(--amber); min-width: 70px; }
+  .bd-romaji { color: var(--text2); min-width: 60px; font-style: italic; }
+  .bd-meaning { color: var(--green); }
+
+  .cw-romaji {
+    color: var(--text3);
+    font-family: var(--mono);
+    font-size: 11px;
+    font-style: italic;
+  }
+
+  .cw-reading {
+    color: var(--amber);
+    font-size: 12px;
+  }
+
+  /* Session screen layout with cheat sheet */
+  .session-content {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+  }
+
+  /* Pocket watch timer */
+  .timer {
+    font-size: 15px;
+    color: var(--text2);
+    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
+    min-width: 52px;
+    text-align: center;
+    letter-spacing: 1px;
+  }
+
+  /* ── Review Screen — Case Report ── */
+  .review-screen {
+    flex: 1;
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .review-screen.active { display: flex; }
+
+  .review-header {
+    padding: 20px 28px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--surface);
+  }
+
+  .review-header h3 {
+    font-family: var(--heading);
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--cream);
+    font-style: italic;
+  }
+
+  .review-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 32px 28px;
+    background: var(--parchment);
+    line-height: 1.9;
+    font-size: 14px;
+    font-family: var(--mono);
+    color: var(--cream);
+    -webkit-user-select: text;
+    user-select: text;
+  }
+
+  .review-body h1 {
+    font-family: var(--heading);
+    font-size: 24px;
+    margin: 28px 0 14px;
+    color: var(--amber);
+    font-weight: 600;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 8px;
+  }
+
+  .review-body h2 {
+    font-family: var(--heading);
+    font-size: 20px;
+    margin: 24px 0 12px;
+    color: var(--amber);
+    font-weight: 600;
+  }
+
+  .review-body h3 {
+    font-family: var(--heading);
+    font-size: 17px;
+    margin: 20px 0 10px;
+    color: var(--cream);
+    font-weight: 600;
+    font-style: italic;
+  }
+
+  .review-body ul, .review-body ol { padding-left: 24px; margin: 10px 0; }
+  .review-body li { margin: 6px 0; }
+  .review-body strong { color: var(--amber); font-weight: 500; }
+  .review-body em { color: var(--cream); }
+
+  .review-body hr {
+    border: none;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--border), transparent);
+    margin: 24px 0;
+  }
+
+  .review-body code {
+    background: var(--surface2);
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 13px;
+    color: var(--amber);
+  }
+
+  .review-actions {
+    padding: 18px 28px;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+    display: flex;
+    gap: 14px;
+    justify-content: center;
+  }
+
+  /* ── Modal ── */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(6px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    padding: 24px;
+  }
+
+  .modal-overlay.active { display: flex; }
+
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 36px;
+    max-width: 380px;
+    width: 100%;
+    box-shadow: 0 32px 80px rgba(0, 0, 0, 0.5);
+  }
+
+  .modal h3 {
+    font-family: var(--heading);
+    font-size: 26px;
+    margin-bottom: 24px;
+    color: var(--cream);
+    font-style: italic;
+  }
+
+  .modal label {
+    display: block;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text3);
+    margin-bottom: 6px;
+    margin-top: 20px;
+    font-family: var(--mono);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+  }
+
+  .modal input, .modal select {
+    width: 100%;
+    padding: 12px 14px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.3s;
+  }
+
+  .modal input:focus, .modal select:focus { border-color: var(--amber); }
+
+  .modal .help-text {
+    font-size: 11px;
+    color: var(--text3);
+    margin-top: 8px;
+    line-height: 1.5;
+    font-family: var(--mono);
+  }
+
+  .modal .help-text a { color: var(--amber); text-decoration: none; }
+
+  .modal .btn-row {
+    display: flex;
+    gap: 12px;
+    margin-top: 32px;
+    justify-content: flex-end;
+  }
+
+  /* ── Loading ── */
+  .loading-spinner {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--border);
+    border-top-color: var(--amber);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin-right: 10px;
+    vertical-align: middle;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Gaslight Lamp ── */
+  /* SVG candle streak badge */
+  .streak-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    background: var(--amber-soft);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    transition: all 0.4s;
+  }
+
+  .streak-badge.active { border-color: rgba(200, 148, 62, 0.3); }
+
+  .streak-badge .flame-svg {
+    display: block;
+    filter: drop-shadow(0 1px 3px rgba(200, 148, 62, 0.3));
+    transition: all 0.4s;
+  }
+
+  .streak-badge.cold .flame-svg { filter: grayscale(1); opacity: 0.4; }
+  .streak-badge.active .flame-svg .flame-inner { animation: sFlicker 1.5s ease-in-out infinite; }
+  .streak-badge.blazing .flame-svg { filter: drop-shadow(0 1px 6px rgba(200, 148, 62, 0.6)); }
+  .streak-badge.blazing .flame-svg .flame-inner { animation: sFlicker 1.2s ease-in-out infinite; }
+
+  @keyframes sFlicker {
+    0%, 100% { opacity: 0.9; transform: scaleY(1); }
+    50% { opacity: 1; transform: scaleY(1.08); }
+  }
+
+  .streak-badge .streak-num {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--amber);
+    transition: color 0.3s;
+  }
+
+  .streak-badge.cold .streak-num { color: var(--text3); }
+
+  .gaslight-lamp {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.6s;
+  }
+
+  .gaslight-lamp .lamp-icon {
+    font-size: 18px;
+    transition: opacity 0.6s, filter 0.6s;
+  }
+
+  .gaslight-lamp .lamp-icon.dim { opacity: 0.4; filter: grayscale(0.6); }
+  .gaslight-lamp .lamp-icon.lit { opacity: 1; filter: drop-shadow(0 0 6px var(--amber)); }
+  .gaslight-lamp .lamp-icon.blazing { opacity: 1; filter: drop-shadow(0 0 10px var(--amber)) drop-shadow(0 0 20px rgba(200, 148, 62, 0.4)); }
+
+  .gaslight-lamp .streak-num {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--amber);
+    font-weight: 600;
+    letter-spacing: 1px;
+  }
+
+  /* ── Watson Observation ── */
+  /* Returning user: compact but visible title */
+  .setup-title.returning h2 { font-size: 26px; margin-bottom: 4px; line-height: 1.3; }
+  .setup-title.returning h2 br { display: none; }
+  .setup-title.returning p { display: none; }
+
+  .next-milestone {
+    width: 100%;
+    max-width: 420px;
+    padding: 12px 16px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--amber);
+    border-radius: 4px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text2);
+    animation: fadeUp 0.7s ease 0.12s both;
+  }
+
+  .next-milestone .nm-title {
+    color: var(--amber);
+    font-weight: 600;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-size: 10px;
+  }
+
+  .next-milestone .nm-bar {
+    height: 6px;
+    background: var(--surface3);
+    border-radius: 3px;
+    margin-top: 8px;
+    overflow: hidden;
+  }
+
+  .next-milestone .nm-fill {
+    height: 100%;
+    background: var(--amber);
+    border-radius: 3px;
+    transition: width 0.5s ease;
+  }
+
+  .watson-observation {
+    width: 100%;
+    max-width: 420px;
+    background: var(--parchment);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 18px 20px;
+    animation: fadeUp 0.7s ease 0.05s both;
+    position: relative;
+  }
+
+  .watson-observation::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    opacity: 0.02;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.2' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    pointer-events: none;
+  }
+
+  .watson-observation .obs-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--text3);
+    margin-bottom: 8px;
+  }
+
+  .watson-observation .obs-text {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--cream);
+    line-height: 1.6;
+    font-style: italic;
+  }
+
+  .watson-observation .obs-week {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+    align-items: center;
+  }
+
+  .watson-observation .obs-day-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    text-align: center;
+    width: 28px;
+  }
+
+  .watson-observation .obs-day-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    margin: 0 auto;
+    margin-top: 4px;
+  }
+
+  .watson-observation .obs-day-dot.filled {
+    background: var(--amber);
+    border-color: var(--amber);
+    box-shadow: 0 0 6px var(--amber-glow);
+  }
+
+  .watson-observation .obs-day-dot.today-dot {
+    border-color: var(--cream);
+  }
+
+  /* ── Lang Card Rank ── */
+  .lang-card .rank-display {
+    margin-top: 8px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--amber);
+    line-height: 1.4;
+    position: relative;
+  }
+
+  .lang-card .rank-meaning {
+    color: var(--text3);
+    font-size: 10px;
+  }
+
+  .lang-card .session-count {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text3);
+    margin-top: 4px;
+    position: relative;
+  }
+
+  /* ── Evidence Board ── */
+  .evidence-board {
+    margin-bottom: 28px;
+  }
+
+  .evidence-board h4 {
+    font-family: var(--heading);
+    font-size: 18px;
+    color: var(--cream);
+    margin-bottom: 16px;
+    font-style: italic;
+  }
+
+  .evidence-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 12px;
+  }
+
+  .evidence-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 16px;
+    transition: all 0.3s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .evidence-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--border);
+    transition: background 0.3s;
+  }
+
+  .evidence-card.unlocked {
+    border-color: var(--amber);
+    box-shadow: 0 2px 16px rgba(200, 148, 62, 0.1);
+  }
+
+  .evidence-card.unlocked::before {
+    background: var(--amber);
+    box-shadow: 0 0 8px var(--amber-glow);
+  }
+
+  .evidence-card.locked {
+    opacity: 0.4;
+  }
+
+  .evidence-card .ev-icon {
+    font-size: 24px;
+    margin-bottom: 8px;
+  }
+
+  .evidence-card .ev-title {
+    font-family: var(--heading);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--cream);
+  }
+
+  .evidence-card .ev-desc {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text2);
+    margin-top: 4px;
+  }
+
+  /* ── Elementary Ending ── */
+  .elementary-screen {
+    flex: 1;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    background: var(--parchment);
+    padding: 40px 24px;
+    position: relative;
+  }
+
+  .elementary-screen.active { display: flex; }
+
+  .elementary-screen::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    opacity: 0.03;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.2' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    pointer-events: none;
+  }
+
+  .elementary-text {
+    max-width: 480px;
+    font-family: var(--mono);
+    font-size: 16px;
+    color: var(--amber);
+    line-height: 2.2;
+    text-align: center;
+    min-height: 320px;
+  }
+
+  .elementary-text .typewriter-cursor {
+    display: inline-block;
+    width: 2px;
+    height: 1em;
+    background: var(--amber);
+    animation: blink-cursor 0.8s step-end infinite;
+    vertical-align: text-bottom;
+    margin-left: 2px;
+  }
+
+  @keyframes blink-cursor {
+    50% { opacity: 0; }
+  }
+
+  .elementary-signature {
+    font-family: var(--heading);
+    font-size: 20px;
+    color: var(--cream);
+    font-style: italic;
+    margin-top: 24px;
+    opacity: 0;
+    transition: opacity 1s ease;
+  }
+
+  .elementary-signature.visible { opacity: 1; }
+
+  .elementary-btn {
+    margin-top: 32px;
+    opacity: 0;
+    transition: opacity 1s ease;
+  }
+
+  .elementary-btn.visible { opacity: 1; }
+
+  /* ── Responsive ── */
+  @media (max-width: 480px) {
+    .setup-title h2 { font-size: 32px; }
+    .lang-grid { gap: 10px; }
+    .lang-card { padding: 18px 12px; }
+    .lang-card .flag { font-size: 26px; }
+    .controls { padding: 18px; gap: 20px; }
+    .mic-btn { width: 64px; height: 64px; font-size: 24px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Watson's portrait — The Bookworm by Carl Spitzweg (1850, public domain) -->
+<img class="watson-portrait" src="bookworm.jpg" alt="" aria-hidden="true">
+
+<!-- Case Board Sidebar -->
+<div class="case-board" id="caseBoard">
+  <div class="cb-header">
+    <span class="moriarty">&#128373;</span> The Case Board
+  </div>
+  <div id="caseBoardContent"></div>
+</div>
+
+<!-- Header -->
+<div class="header">
+  <div class="logo" onclick="goHome()" style="cursor:pointer;">Watson <span>Tutor</span></div>
+  <div class="header-right">
+    <button class="nav-btn" onclick="showProgress()">Progress</button>
+    <div class="streak-badge cold" id="streakBadge">
+      <svg viewBox="0 0 24 24" class="flame-svg" width="20" height="20">
+        <rect x="10" y="15" width="4" height="5" fill="#a68a5b" rx="1"/>
+        <line x1="12" y1="11" x2="12" y2="15" stroke="#555" stroke-width="0.5"/>
+        <path d="M12 5 Q10 8 10 10 Q10 12 12 13 Q14 12 14 10 Q14 8 12 5Z" fill="#c8943e" class="flame-inner"/>
+        <path d="M12 6.5 Q11 8.5 11 9.5 Q11 11 12 12 Q13 11 13 9.5 Q13 8.5 12 6.5Z" fill="#daa54a" opacity="0.8"/>
+      </svg>
+      <span class="streak-num" id="streakNum"></span>
+    </div>
+    <div class="status-dot" id="statusDot" style="display:none;"></div>
+    <button class="settings-btn" onclick="openSettings()">&#9881;</button>
+  </div>
+</div>
+
+<!-- Setup Screen -->
+<div class="setup-screen" id="setupScreen">
+  <div class="setup-title" id="setupTitle">
+    <h2>At your service,<br><em>shall we begin?</em></h2>
+    <p>Real-time conversation practice with live corrections and a full debrief.</p>
+  </div>
+
+  <div class="watson-observation" id="watsonObservation" style="display:none;"></div>
+
+  <div class="divider">select your case</div>
+
+  <div class="lang-grid" id="langGrid">
+    <div class="lang-card" data-lang="spanish" onclick="selectLang(this)">
+      <span class="flag">&#127466;&#127480;</span>
+      <div class="name">Spanish</div>
+      <div class="tutor">with Lorenzo</div>
+      <div class="rank-display" id="rank-spanish"></div>
+      <div class="session-count" id="sessions-spanish"></div>
+    </div>
+    <div class="lang-card" data-lang="arabic" onclick="selectLang(this)">
+      <span class="flag">&#127480;&#127462;</span>
+      <div class="name">Arabic</div>
+      <div class="tutor">with Khalid</div>
+      <div class="rank-display" id="rank-arabic"></div>
+      <div class="session-count" id="sessions-arabic"></div>
+    </div>
+    <div class="lang-card" data-lang="russian" onclick="selectLang(this)">
+      <span class="flag">&#127479;&#127482;</span>
+      <div class="name">Russian</div>
+      <div class="tutor">with Dmitry</div>
+      <div class="rank-display" id="rank-russian"></div>
+      <div class="session-count" id="sessions-russian"></div>
+    </div>
+    <div class="lang-card" data-lang="japanese" onclick="selectLang(this)">
+      <span class="flag">&#127471;&#127477;</span>
+      <div class="name">Japanese</div>
+      <div class="tutor">with Keita</div>
+      <div class="rank-display" id="rank-japanese"></div>
+      <div class="session-count" id="sessions-japanese"></div>
+    </div>
+  </div>
+
+  <div class="mode-toggle" style="animation: fadeUp 0.7s ease 0.28s both;">
+    <button class="mode-btn active" id="guidedBtn" onclick="setMode('guided')">Guided</button>
+    <button class="mode-btn" id="freeformBtn" onclick="setMode('freeform')">Freeform</button>
+  </div>
+
+  <button class="btn btn-primary" id="startBtn" onclick="startSession()" disabled>
+    Begin Session
+  </button>
+</div>
+
+<!-- Session Screen -->
+<div class="session-screen" id="sessionScreen">
+  <div class="session-content">
+    <div class="transcript" id="transcript"></div>
+    <div class="cheat-sheet" id="cheatSheet">
+      <h4>Words Learned</h4>
+      <div id="cheatList"><span class="cheat-empty">Words will appear here as you learn them. Type "add [word] = [meaning]" to add manually.</span></div>
+    </div>
+  </div>
+  <div class="controls">
+    <div class="timer" id="timer">0:00</div>
+    <button class="cheat-btn" id="cheatBtn" onclick="toggleCheatSheet()" title="Cheat sheet">&#128209;</button>
+    <button class="cheat-btn" id="autoBreakBtn" onclick="toggleAutoBreakdown()" title="Auto-show word breakdown">&#25991;</button>
+    <button class="mic-btn listening" id="micBtn" onclick="toggleMic()">&#127908;</button>
+    <button class="end-btn" id="endBtn" onclick="endSession()" title="End session">&#9632;</button>
+  </div>
+</div>
+
+<!-- Review Screen -->
+<div class="review-screen" id="reviewScreen">
+  <div class="review-header">
+    <h3>Session Debrief</h3>
+    <div class="timer" id="reviewTimer"></div>
+  </div>
+  <div class="review-body" id="reviewBody"></div>
+  <div class="review-actions">
+    <button class="btn btn-secondary" onclick="downloadReview()">Save Report</button>
+    <button class="btn btn-primary" onclick="newSession()">New Session</button>
+  </div>
+</div>
+
+<!-- Progress Dashboard -->
+<div class="progress-screen" id="progressScreen">
+  <div class="progress-header">
+    <h3>Your Progress</h3>
+    <button class="btn btn-secondary" onclick="goHome()" style="padding:8px 16px;font-size:12px;">Back</button>
+  </div>
+  <div class="progress-body" id="progressBody">
+    <div class="empty-state">No sessions yet. Start a conversation to track your progress.</div>
+  </div>
+</div>
+
+<!-- Elementary Ending -->
+<div class="elementary-screen" id="elementaryScreen">
+  <div class="elementary-text" id="elementaryText"></div>
+  <div class="elementary-signature" id="elementarySignature">&mdash; Watson</div>
+  <div class="elementary-btn" id="elementaryBtnWrap">
+    <button class="btn btn-primary" onclick="dismissElementary()">Begin New Case</button>
+  </div>
+</div>
+
+<!-- Settings Modal -->
+<div class="modal-overlay" id="settingsModal">
+  <div class="modal">
+    <h3>Settings</h3>
+    <label>API Key</label>
+    <input type="password" id="apiKeyInput" placeholder="AIza...">
+    <p class="help-text">
+      Get yours free at <a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com/apikey</a>.
+      Stored locally in your browser only.
+    </p>
+    <label>Your Name</label>
+    <input type="text" id="nameInput" placeholder="Enter your name">
+    <label>Level</label>
+    <select id="levelInput">
+      <option value="beginner">Beginner</option>
+      <option value="intermediate">Intermediate</option>
+      <option value="heritage">Heritage speaker (rusty)</option>
+      <option value="advanced">Advanced</option>
+    </select>
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="closeSettings()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveSettings()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Kuroshiro Web Worker (Japanese, local dictionary, off main thread) ──
+let kuroshiroWorker = null;
+let kuroshiroReady = false;
+const kuroshiroPending = new Map();
+
+function initKuroshiro() {
+  if (kuroshiroWorker) return;
+  try {
+    kuroshiroWorker = new Worker('kuroshiro-worker.js');
+    kuroshiroWorker.onmessage = (e) => {
+      if (e.data.type === 'ready') { kuroshiroReady = true; console.log('Kuroshiro ready'); }
+      if (e.data.type === 'result' && kuroshiroPending.has(e.data.id)) {
+        kuroshiroPending.get(e.data.id)(e.data);
+        kuroshiroPending.delete(e.data.id);
+      }
+      if (e.data.type === 'error') {
+        console.warn('Kuroshiro:', e.data.error);
+        if (e.data.id) { kuroshiroPending.get(e.data.id)?.(null); kuroshiroPending.delete(e.data.id); }
+      }
+    };
+    kuroshiroWorker.postMessage({ type: 'init' });
+  } catch (e) { console.warn('Kuroshiro worker failed:', e); }
+}
+
+function convertWithKuroshiro(text) {
+  return new Promise((resolve) => {
+    if (!kuroshiroReady || !kuroshiroWorker) { resolve(null); return; }
+    const id = Date.now() + '-' + Math.random().toString(36).slice(2);
+    kuroshiroPending.set(id, resolve);
+    kuroshiroWorker.postMessage({ type: 'convert', id, text });
+    setTimeout(() => { if (kuroshiroPending.has(id)) { kuroshiroPending.delete(id); resolve(null); } }, 5000);
+  });
+}
+
+// ── State ──
+let ws = null;
+let audioContext = null;
+let micStream = null;
+let workletNode = null;
+let selectedLang = null;
+let transcripts = [];
+let sessionStart = null;
+let timerInterval = null;
+let micMuted = false;
+let reviewMarkdown = '';
+let sessionMode = 'guided';
+let autoBreakdown = false;
+
+function toggleAutoBreakdown() {
+  autoBreakdown = !autoBreakdown;
+  document.getElementById('autoBreakBtn').classList.toggle('active', autoBreakdown);
+}
+
+function setMode(mode) {
+  sessionMode = mode;
+  document.getElementById('guidedBtn').classList.toggle('active', mode === 'guided');
+  document.getElementById('freeformBtn').classList.toggle('active', mode === 'freeform');
+}
+
+// ── Buffered Audio Playback ──
+let playbackContext = null;
+let nextPlayTime = 0;
+
+function scheduleAudioChunk(pcmData) {
+  if (!playbackContext) {
+    playbackContext = new AudioContext({ sampleRate: 24000 });
+    nextPlayTime = playbackContext.currentTime;
+  }
+  const int16 = new Int16Array(pcmData);
+  const float32 = new Float32Array(int16.length);
+  for (let i = 0; i < int16.length; i++) float32[i] = int16[i] / 32768;
+  const buffer = playbackContext.createBuffer(1, float32.length, 24000);
+  buffer.getChannelData(0).set(float32);
+  const source = playbackContext.createBufferSource();
+  source.buffer = buffer;
+  source.connect(playbackContext.destination);
+  const now = playbackContext.currentTime;
+  if (nextPlayTime < now) nextPlayTime = now;
+  source.start(nextPlayTime);
+  nextPlayTime += buffer.duration;
+}
+
+function clearPlayback() {
+  if (playbackContext) { playbackContext.close(); playbackContext = null; }
+  nextPlayTime = 0;
+}
+
+// ── Language Configs ──
+const LANGS = {
+  spanish: {
+    name: 'Lorenzo', voice: 'Orus',
+    system: (u) => `You are Lorenzo, a warm Mexican Spanish conversation partner and teacher.\n\nAbout the student:\n- Name: ${u.name}\n- Level: ${u.level}\n\nCore rules:\n- Speak IN SPANISH. This is an immersion conversation.\n- Only switch to English when correcting grammar. Format: brief English explanation, then correct Spanish.\n- Do NOT translate everything into English. The student is trying to immerse.\n- Keep responses 2-4 sentences. Conversation, not lecture.\n- Be PROACTIVE: teach vocabulary, point out interesting constructions, share etymology.\n- Use Mexican/Latin American expressions and explain them in Spanish.\n- NEVER just ask "what don't you understand?" -- pick something interesting and teach.\n- Track mistakes -- if the same error happens twice, flag the pattern.\n- Be natural, warm, responsive. This is a real-time voice conversation.`
+  },
+  arabic: {
+    name: 'Khalid', voice: 'Orus',
+    system: (u) => `You are Khalid, a warm and patient Arabic conversation partner and teacher.\n\nAbout the student:\n- Name: ${u.name}\n- Level: ${u.level}\n\nCore rules:\n- Speak IN ARABIC (Modern Standard Arabic, with dialect awareness).\n- Only switch to English when correcting grammar. Format: brief English explanation, then correct Arabic.\n- For heritage speakers refreshing their Arabic: acknowledge what they know, build on it.\n- Keep responses 2-4 sentences. Conversation, not lecture.\n- Be PROACTIVE: teach vocabulary, explain root patterns (trilateral roots are fascinating), share etymology.\n- Break down word roots -- Arabic's root system is a superpower for learning vocabulary.\n- NEVER just ask "what don't you understand?" -- pick something interesting and teach.\n- Track mistakes -- if the same error happens twice, flag the pattern.\n- Be natural, warm, responsive. This is a real-time voice conversation.`
+  },
+  russian: {
+    name: 'Dmitry', voice: 'Orus',
+    system: (u) => `You are Dmitry, a patient Russian conversation partner.\n\nAbout the student:\n- Name: ${u.name}\n- Level: ${u.level}\n\nCore rules:\n- Speak IN RUSSIAN. Include English translation ONLY for new vocabulary words.\n- When correcting grammar, briefly explain in English, then give the correct Russian.\n- Use simple sentences for beginners -- subject + verb + object.\n- ALWAYS break down etymology of new words.\n- Keep responses 1-2 sentences in Russian.\n- Quote Dostoevsky when relevant and explain key words.\n- Be proactive -- teach something with every response.`
+  },
+  japanese: {
+    name: 'Keita', voice: 'Orus',
+    system: (u) => `You are Keita, a casual Japanese conversation partner.\n\nAbout the student:\n- Name: ${u.name}\n- Level: ${u.level}\n- The student is a BEGINNER. They will mostly speak in English or very broken Japanese.\n\nCore rules:\n- You must understand BOTH English and Japanese input. Always respond regardless of what language they speak.\n- Speak in simple Japanese. Keep it SHORT — 1 sentence max in Japanese per turn.\n- After your Japanese sentence, give a BRIEF English meaning (5-10 words max, not a full translation). Example: "元気？ ...that means 'how are you?'"\n- Do NOT repeat yourself. Say it once in Japanese, brief English hint, move on.\n- Teach whole PHRASES first, not individual words. Give them something they can USE immediately.\n- Teaching order: Sound first → Meaning → Usage in context → Kanji breakdown ONLY if they ask or say "breakdown"\n- Use casual speech (not keigo) to match anime dialogue.\n- Do NOT dump vocabulary lists. Introduce ONE new phrase per turn, max.\n- If they say "breakdown" or ask how a word works, THEN go deep: pronunciation, meaning, kanji components, etymology.\n- Be proactive — ask them simple questions they can answer with words they just learned.\n- If they seem stuck, give them a phrase to repeat and use.\n- Reference Attack on Titan or Death Note when relevant.`
+  }
+};
+
+// ── Settings ──
+function getSettings() {
+  return {
+    apiKey: localStorage.getItem('watson_api_key') || '',
+    name: localStorage.getItem('watson_name') || 'Student',
+    level: localStorage.getItem('watson_level') || 'beginner',
+  };
+}
+function openSettings() {
+  const s = getSettings();
+  document.getElementById('apiKeyInput').value = s.apiKey;
+  document.getElementById('nameInput').value = s.name;
+  document.getElementById('levelInput').value = s.level;
+  document.getElementById('settingsModal').classList.add('active');
+}
+function closeSettings() { document.getElementById('settingsModal').classList.remove('active'); }
+function saveSettings() {
+  const key = document.getElementById('apiKeyInput').value.trim();
+  const name = document.getElementById('nameInput').value.trim();
+  const level = document.getElementById('levelInput').value;
+  if (key) localStorage.setItem('watson_api_key', key);
+  if (name) localStorage.setItem('watson_name', name);
+  localStorage.setItem('watson_level', level);
+  closeSettings();
+  checkReady();
+}
+function checkReady() {
+  const s = getSettings();
+  document.getElementById('startBtn').disabled = !(s.apiKey && selectedLang);
+}
+
+// ── Language Selection ──
+function selectLang(el) {
+  document.querySelectorAll('.lang-card').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  selectedLang = el.dataset.lang;
+  checkReady();
+  if (selectedLang === 'japanese') initKuroshiro();
+}
+
+// ── Audio Helpers ──
+function base64ToArrayBuffer(b64) {
+  const bin = atob(b64); const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes.buffer;
+}
+function arrayBufferToBase64(buf) {
+  const bytes = new Uint8Array(buf); let bin = '';
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin);
+}
+
+// ── AudioWorklet (inline) ──
+const workletCode = `
+class AudioCapture extends AudioWorkletProcessor {
+  constructor() { super(); this.buffer = new Int16Array(2048); this.idx = 0; }
+  process(inputs) {
+    const ch = inputs[0]?.[0];
+    if (!ch) return true;
+    for (let i = 0; i < ch.length; i++) {
+      this.buffer[this.idx++] = Math.max(-32768, Math.min(32767, Math.floor(ch[i] * 32768)));
+      if (this.idx >= this.buffer.length) {
+        this.port.postMessage({ pcm: this.buffer.slice().buffer }, [this.buffer.slice().buffer]);
+        this.idx = 0;
+      }
+    }
+    return true;
+  }
+}
+registerProcessor('audio-capture', AudioCapture);
+`;
+
+// ── WebSocket Session ──
+async function startSession() {
+  const settings = getSettings();
+  if (!settings.apiKey || !selectedLang) return;
+
+  // Clean up any previous session
+  if (ws) { try { ws.close(); } catch(e) {} ws = null; }
+  stopMic();
+  clearPlayback();
+
+  const lang = LANGS[selectedLang];
+  const modeInstruction = sessionMode === 'freeform'
+    ? '\n\nMODE: Freeform conversation. Follow the student\'s lead completely. No lesson plan — just natural conversation. Still correct mistakes and teach proactively.'
+    : '\n\nMODE: Guided session. Steer the conversation toward topics that practice the student\'s weak points. Focus on their most common errors. Do NOT announce it as a lesson — keep it natural.';
+  const systemPrompt = lang.system({ name: settings.name, level: settings.level }) + modeInstruction;
+  const url = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${settings.apiKey}`;
+  ws = new WebSocket(url);
+  transcripts = [];
+
+  ws.addEventListener('open', () => {
+    ws.send(JSON.stringify({
+      setup: {
+        model: 'models/gemini-2.5-flash-native-audio-preview-12-2025',
+        generationConfig: {
+          temperature: 1.0, responseModalities: ['AUDIO'],
+          speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: lang.voice } } }
+        },
+        systemInstruction: { parts: [{ text: systemPrompt }] },
+        inputAudioTranscription: {},
+        outputAudioTranscription: {}
+      }
+    }));
+    document.getElementById('statusDot').classList.add('connected');
+    document.getElementById('lampIcon').className = 'lamp-icon blazing';
+    showSession();
+    startTimer();
+    startMic();
+  });
+
+  let currentTutorTurn = '';
+
+  ws.addEventListener('message', async (event) => {
+    const text = typeof event.data === 'string' ? event.data : await event.data.text();
+    const msg = JSON.parse(text);
+    if (msg.setupComplete) return;
+    const sc = msg.serverContent;
+    if (!sc) return;
+    if (sc.modelTurn?.parts) {
+      for (const part of sc.modelTurn.parts) {
+        if (part.inlineData?.data) scheduleAudioChunk(base64ToArrayBuffer(part.inlineData.data));
+      }
+    }
+    if (sc.inputTranscription?.text) addTranscript('user', sc.inputTranscription.text, settings.name);
+    if (sc.outputTranscription?.text) {
+      addTranscript('tutor', sc.outputTranscription.text, lang.name);
+      currentTutorTurn += ' ' + sc.outputTranscription.text;
+    }
+    // When tutor finishes speaking, process the full turn
+    if (sc.turnComplete && currentTutorTurn.trim()) {
+      const turnText = currentTutorTurn.trim();
+      const turnBubbleId = lastBubble ? lastBubble.dataset.turnId : null;
+      currentTutorTurn = '';
+
+      // Japanese: kuroshiro worker for furigana + romaji + word tokens (off main thread)
+      if (turnBubbleId && selectedLang === 'japanese' && kuroshiroReady) {
+        convertWithKuroshiro(turnText).then(ann => {
+          if (!ann) return;
+          const bbl = document.querySelector(`[data-turn-id="${turnBubbleId}"]`);
+          if (!bbl) return;
+
+          // Filter: only keep Japanese words (contains kanji, hiragana, or katakana)
+          const jpWords = (ann.words || []).filter(w => /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(w.surface));
+
+          // Build breakdown table with meanings directly from local dictionary
+          const breakdownId = 'bd-' + turnBubbleId;
+          const particles = ['は','が','の','を','に','で','と','も','へ','か','よ','ね','な','だ'];
+          let breakdownHtml = '';
+          if (jpWords.length > 0) {
+            breakdownHtml = `<div class="word-breakdown" onclick="this.querySelector('.breakdown-table').classList.toggle('open')">
+              <span class="breakdown-toggle">&#9654; word breakdown (${jpWords.length} words)</span>
+              <div class="breakdown-table" id="${breakdownId}">
+                ${jpWords.map((w, i) => `<div class="breakdown-row">
+                  <span class="bd-kanji">${escapeHtml(w.surface)}</span>
+                  <span class="bd-reading">${escapeHtml(w.reading)}</span>
+                  <span class="bd-romaji">${escapeHtml(w.romaji)}</span>
+                  <span class="bd-meaning">${escapeHtml(w.meaning || '—')}</span>
+                </div>`).join('')}
+              </div>
+            </div>`;
+
+            // Add to cheat sheet
+            for (const w of jpWords) {
+              if (w.meaning && w.surface.length > 1 && !particles.includes(w.surface)) {
+                addCheatWord(w.surface, w.meaning, w.reading, w.romaji);
+              }
+            }
+          }
+
+          // Build the annotated text with English above each word (casa blanca style)
+          let annotatedText = bbl.innerHTML;
+          for (const w of jpWords) {
+            if (w.meaning && /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(w.surface)) {
+              const escaped = w.surface.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+              annotatedText = annotatedText.replace(
+                new RegExp(escaped),
+                `<ruby>${w.surface}<rt>${w.meaning}</rt></ruby>`
+              );
+            }
+          }
+
+          // Romaji line + collapsible breakdown
+          const openClass = autoBreakdown ? ' open' : '';
+          breakdownHtml = breakdownHtml.replace('class="breakdown-table"', `class="breakdown-table${openClass}"`);
+
+          bbl.innerHTML = `<span class="tutor-annotated">${annotatedText}</span>`
+            + `<div style="margin-top:8px;padding-top:6px;border-top:1px solid var(--border);font-size:14px;color:var(--amber);font-family:var(--mono);letter-spacing:0.3px;line-height:1.8;">${escapeHtml(ann.romaji)}</div>`
+            + breakdownHtml;
+          document.getElementById('transcript').scrollTop = document.getElementById('transcript').scrollHeight;
+        });
+      }
+    }
+    if (sc.interrupted) { clearPlayback(); currentTutorTurn = ''; }
+  });
+
+  ws.addEventListener('error', () => {
+    document.getElementById('statusDot').classList.remove('connected');
+    document.getElementById('statusDot').classList.add('error');
+    updateGaslightLamp();
+  });
+  ws.addEventListener('close', () => {
+    document.getElementById('statusDot').classList.remove('connected');
+    updateGaslightLamp();
+  });
+}
+
+// ── Mic ──
+async function startMic() {
+  micStream = await navigator.mediaDevices.getUserMedia({
+    audio: { channelCount: 1, sampleRate: 16000, echoCancellation: true, noiseSuppression: true }
+  });
+  audioContext = new AudioContext({ sampleRate: 16000 });
+  const source = audioContext.createMediaStreamSource(micStream);
+  const blob = new Blob([workletCode], { type: 'application/javascript' });
+  const workletUrl = URL.createObjectURL(blob);
+  await audioContext.audioWorklet.addModule(workletUrl);
+  URL.revokeObjectURL(workletUrl);
+  workletNode = new AudioWorkletNode(audioContext, 'audio-capture');
+  workletNode.port.onmessage = (event) => {
+    if (ws?.readyState === WebSocket.OPEN && !micMuted) {
+      ws.send(JSON.stringify({
+        realtimeInput: { mediaChunks: [{ mimeType: 'audio/pcm', data: arrayBufferToBase64(event.data.pcm) }] }
+      }));
+    }
+  };
+  source.connect(workletNode);
+  workletNode.connect(audioContext.destination);
+  micMuted = false;
+  document.getElementById('micBtn').classList.add('listening');
+}
+function toggleMic() {
+  micMuted = !micMuted;
+  const btn = document.getElementById('micBtn');
+  btn.classList.toggle('listening', !micMuted);
+  btn.innerHTML = micMuted ? '&#128263;' : '&#127908;';
+}
+function stopMic() {
+  if (workletNode) { workletNode.disconnect(); workletNode = null; }
+  if (audioContext) { audioContext.close(); audioContext = null; }
+  if (micStream) { micStream.getTracks().forEach(t => t.stop()); micStream = null; }
+}
+
+// ── Transcript ──
+let lastSender = null, lastBubble = null, turnCounter = 0;
+function escapeHtml(t) {
+  const d = document.createElement('div'); d.textContent = t; return d.innerHTML;
+}
+
+function addTranscript(role, text, name) {
+  transcripts.push({ role, text, name, time: new Date().toISOString() });
+  const container = document.getElementById('transcript');
+  if (role === lastSender && lastBubble) {
+    lastBubble.innerHTML += ' ' + escapeHtml(text);
+  } else {
+    turnCounter++;
+    const tid = 'turn-' + turnCounter;
+    const div = document.createElement('div');
+    div.className = `msg ${role}`;
+    div.innerHTML = `<div class="sender">${name}</div><div class="bubble" data-turn-id="${tid}"></div>`;
+    const bubble = div.querySelector('.bubble');
+    bubble.innerHTML = escapeHtml(text);
+    container.appendChild(div);
+    lastBubble = bubble;
+    lastSender = role;
+  }
+  container.scrollTop = container.scrollHeight;
+}
+
+// ── Annotation Queue (runs during idle time, never blocks audio) ──
+let annotationQueue = [];
+let annotationRunning = false;
+
+function queueAnnotation(tutorText, turnBubbleId, lang, apiKey) {
+  annotationQueue.push({ tutorText, turnBubbleId, lang, apiKey });
+  if (!annotationRunning) drainAnnotationQueue();
+}
+
+async function drainAnnotationQueue() {
+  if (annotationRunning || annotationQueue.length === 0) return;
+  annotationRunning = true;
+  while (annotationQueue.length > 0) {
+    const job = annotationQueue.shift();
+    // Wait for idle moment so we don't compete with audio
+    await new Promise(resolve => {
+      if ('requestIdleCallback' in window) {
+        requestIdleCallback(resolve, { timeout: 3000 });
+      } else {
+        setTimeout(resolve, 200);
+      }
+    });
+    await analyzeAndAnnotate(job.tutorText, job.turnBubbleId, job.lang, job.apiKey);
+  }
+  annotationRunning = false;
+}
+
+// ── Timer ──
+function startTimer() {
+  sessionStart = Date.now();
+  timerInterval = setInterval(() => {
+    const e = Math.floor((Date.now() - sessionStart) / 1000);
+    document.getElementById('timer').textContent = `${Math.floor(e/60)}:${(e%60).toString().padStart(2,'0')}`;
+  }, 1000);
+}
+function stopTimer() {
+  clearInterval(timerInterval);
+  const e = Math.floor((Date.now() - sessionStart) / 1000);
+  return `${Math.floor(e/60)}:${(e%60).toString().padStart(2,'0')}`;
+}
+
+// ── Session Management ──
+function showSession() {
+  document.getElementById('setupScreen').style.display = 'none';
+  document.getElementById('sessionScreen').classList.add('active');
+  lastSender = null; lastBubble = null;
+  document.getElementById('transcript').innerHTML = '';
+  // Load previously learned words for this language
+  const saved = localStorage.getItem('watson_cheat_' + selectedLang);
+  cheatWords = saved ? JSON.parse(saved) : [];
+  // Clean out any non-target-language entries from previous buggy sessions
+  if (selectedLang === 'japanese') {
+    cheatWords = cheatWords.filter(w => /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(w.term) && w.meaning !== '...');
+    localStorage.setItem('watson_cheat_japanese', JSON.stringify(cheatWords));
+  }
+  renderCheatSheet();
+}
+async function endSession() {
+  const duration = stopTimer();
+  const elapsed = Math.floor((Date.now() - sessionStart) / 1000);
+  stopMic();
+  if (ws) { ws.close(); ws = null; }
+  clearPlayback();
+
+  // Save session record for progress tracking
+  saveSessionRecord(selectedLang, elapsed, LANGS[selectedLang].name);
+  // Check for Elementary rank achievement
+  setTimeout(() => checkElementaryRank(), 1000);
+
+  document.getElementById('statusDot').classList.remove('connected');
+  document.getElementById('sessionScreen').classList.remove('active');
+  document.getElementById('reviewScreen').classList.add('active');
+  document.getElementById('reviewTimer').textContent = duration;
+  document.getElementById('reviewBody').innerHTML = '<div class="loading-spinner"></div> Generating debrief...';
+  await generateReview();
+}
+
+async function generateReview() {
+  const settings = getSettings();
+  const lang = LANGS[selectedLang];
+  const convoText = transcripts.map(t => `${t.role === 'user' ? settings.name : lang.name}: ${t.text}`).join('\n');
+  if (!convoText.trim()) { document.getElementById('reviewBody').innerHTML = '<p>No conversation to review.</p>'; return; }
+
+  const pitchExtras = { japanese: 'Pay special attention to pitch accent patterns.', arabic: 'Note emphatic consonant confusion and pharyngeal sounds.', russian: 'Note palatalization and stress placement issues.', spanish: 'Note vowel reduction and stress placement.' };
+  const pitchSection = `\n5. **Pronunciation**: Based on transcription artifacts (word splitting, phonetic errors, tutor corrections), identify words the learner likely mispronounced. ${pitchExtras[selectedLang] || ''} List the top 3 sounds to practice with minimal pair exercises.`;
+  const reviewPrompt = `Review this ${selectedLang} practice conversation. Be specific and actionable.\n\n1. **Mistakes made**: List each grammar/vocabulary error, what was said vs correct, and WHY.\n2. **New vocabulary**: Words/phrases to learn, with etymology when interesting.\n3. **Patterns to drill**: Recurring weak points for next session.\n4. **Progress notes**: What went well.${pitchSection}\n\nConversation:\n${convoText}`;
+
+  try {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${settings.apiKey}`,
+      { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text: reviewPrompt }] }] }) }
+    );
+    const data = await response.json();
+    if (data.error) { document.getElementById('reviewBody').innerHTML = `<p>Review error: ${data.error.message}</p>`; return; }
+    reviewMarkdown = data.candidates?.[0]?.content?.parts?.[0]?.text || 'No review generated.';
+    autoDownloadReview(settings, lang);
+    document.getElementById('reviewBody').innerHTML = markdownToHtml(reviewMarkdown);
+  } catch (e) {
+    document.getElementById('reviewBody').innerHTML = `<p>Review error: ${e.message}</p>`;
+  }
+}
+
+// ── Markdown ──
+function markdownToHtml(md) {
+  let html = md
+    .replace(/^### (.*$)/gm, '<h3>$1</h3>')
+    .replace(/^## (.*$)/gm, '<h2>$1</h2>')
+    .replace(/^# (.*$)/gm, '<h1>$1</h1>')
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.*?)\*/g, '<em>$1</em>')
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/^---$/gm, '<hr>');
+  const lines = html.split('\n');
+  let inList = false, result = [];
+  for (const line of lines) {
+    const isLi = /^[-*]\s/.test(line.trim());
+    if (isLi && !inList) { result.push('<ul>'); inList = true; }
+    if (!isLi && inList) { result.push('</ul>'); inList = false; }
+    result.push(isLi ? '<li>' + line.trim().replace(/^[-*]\s/, '') + '</li>' : line);
+  }
+  if (inList) result.push('</ul>');
+  return result.join('\n').replace(/\n{2,}/g, '<br><br>').replace(/\n/g, '<br>');
+}
+
+// ── Download ──
+function buildReviewFile(settings, lang) {
+  const d = new Date().toISOString().slice(0, 10), t = new Date().toTimeString().slice(0, 5);
+  const ts = t.replace(':', '');
+  return { filename: `watson_${selectedLang}_review_${d}_${ts}.md`,
+    content: `# Session Debrief \u2014 ${d} ${t}\n**Language:** ${selectedLang} | **Tutor:** ${lang.name} | **Student:** ${settings.name}\n\n---\n\n` + reviewMarkdown };
+}
+let reviewDownloaded = false;
+function autoDownloadReview(settings, lang) {
+  if (reviewDownloaded || !reviewMarkdown) return;
+  reviewDownloaded = true;
+  const { filename, content } = buildReviewFile(settings, lang);
+  const blob = new Blob([content], { type: 'text/markdown' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+function downloadReview() { autoDownloadReview(getSettings(), LANGS[selectedLang]); }
+
+function newSession() {
+  document.getElementById('reviewScreen').classList.remove('active');
+  document.getElementById('setupScreen').style.display = '';
+  transcripts = []; reviewMarkdown = ''; reviewDownloaded = false; lastSender = null; lastBubble = null;
+  refreshHomeScreen();
+}
+
+function goHome() {
+  // If in a session, confirm before leaving
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    if (!confirm('End the current session and return home?')) return;
+    stopTimer(); stopMic();
+    ws.close(); ws = null;
+    clearPlayback();
+    document.getElementById('statusDot').classList.remove('connected');
+  }
+  document.getElementById('sessionScreen').classList.remove('active');
+  document.getElementById('reviewScreen').classList.remove('active');
+  document.getElementById('progressScreen').classList.remove('active');
+  document.getElementById('elementaryScreen').classList.remove('active');
+  document.getElementById('setupScreen').style.display = '';
+  // Restore case board on wide screens
+  document.getElementById('caseBoard').classList.remove('hidden');
+  lastSender = null; lastBubble = null;
+  refreshHomeScreen();
+}
+
+// ── Session Tracking (localStorage) ──
+function saveSessionRecord(lang, duration, tutorName) {
+  const records = JSON.parse(localStorage.getItem('watson_sessions') || '[]');
+  records.push({
+    date: new Date().toISOString(),
+    language: lang,
+    tutor: tutorName,
+    duration_seconds: duration,
+  });
+  localStorage.setItem('watson_sessions', JSON.stringify(records));
+}
+
+function getSessionStats() {
+  const records = JSON.parse(localStorage.getItem('watson_sessions') || '[]');
+  if (records.length === 0) return null;
+
+  const totalSessions = records.length;
+  const totalMinutes = Math.round(records.reduce((sum, r) => sum + (r.duration_seconds || 0), 0) / 60);
+
+  // Calculate streak
+  const today = new Date().toISOString().slice(0, 10);
+  const sessionDays = [...new Set(records.map(r => r.date.slice(0, 10)))].sort().reverse();
+  let streak = 0;
+  let checkDate = new Date();
+  for (const day of sessionDays) {
+    const check = checkDate.toISOString().slice(0, 10);
+    if (day === check) {
+      streak++;
+      checkDate.setDate(checkDate.getDate() - 1);
+    } else if (day < check) {
+      break;
+    }
+  }
+
+  // Per-language stats
+  const byLang = {};
+  for (const r of records) {
+    if (!byLang[r.language]) byLang[r.language] = { sessions: 0, minutes: 0 };
+    byLang[r.language].sessions++;
+    byLang[r.language].minutes += Math.round((r.duration_seconds || 0) / 60);
+  }
+
+  // Recent sessions
+  const recent = records.slice(-10).reverse();
+
+  return { totalSessions, totalMinutes, streak, byLang, recent };
+}
+
+// ── Progress Dashboard ──
+function showProgress() {
+  document.getElementById('setupScreen').style.display = 'none';
+  document.getElementById('sessionScreen').classList.remove('active');
+  document.getElementById('reviewScreen').classList.remove('active');
+  document.getElementById('progressScreen').classList.add('active');
+  document.getElementById('caseBoard').classList.add('hidden');
+  renderProgress();
+}
+
+function renderProgress() {
+  const stats = getSessionStats();
+  const body = document.getElementById('progressBody');
+
+  if (!stats) {
+    body.innerHTML = '<div class="empty-state">No sessions yet. Complete a conversation to see your progress here.</div>';
+    return;
+  }
+
+  let html = '';
+
+  // Stats cards
+  html += '<div class="stats-grid">';
+  html += `<div class="stat-card"><div class="stat-value">${stats.totalSessions}</div><div class="stat-label">Sessions</div></div>`;
+  html += `<div class="stat-card"><div class="stat-value">${stats.totalMinutes}</div><div class="stat-label">Minutes</div></div>`;
+  html += `<div class="stat-card"><div class="stat-value">${stats.streak}</div><div class="stat-label">Day Streak</div></div>`;
+  html += '</div>';
+
+  // ── Streak Calendar (last 28 days) ──
+  html += '<div class="journey-section"><h4>Activity</h4>';
+  html += '<div class="streak-calendar">';
+  const records = JSON.parse(localStorage.getItem('watson_sessions') || '[]');
+  const sessionDaySet = new Set(records.map(r => r.date.slice(0, 10)));
+  const today = new Date();
+  for (let i = 27; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    const ds = d.toISOString().slice(0, 10);
+    const dayNum = d.getDate();
+    const isActive = sessionDaySet.has(ds);
+    const isToday = i === 0;
+    html += `<div class="streak-day${isActive ? ' active' : ''}${isToday ? ' today' : ''}">${dayNum}</div>`;
+  }
+  html += '</div></div>';
+
+  // ── Milestones ──
+  html += '<div class="journey-section"><h4>Milestones</h4>';
+  const milestones = [
+    { icon: '&#127793;', title: 'First Words', desc: 'Complete your first session', threshold: 1 },
+    { icon: '&#128293;', title: 'On Fire', desc: '3-day streak', threshold: 3, type: 'streak' },
+    { icon: '&#127942;', title: 'Dedicated', desc: '10 sessions completed', threshold: 10 },
+    { icon: '&#9200;', title: 'Hour of Practice', desc: '60 minutes total', threshold: 60, type: 'minutes' },
+    { icon: '&#128170;', title: 'Committed', desc: '7-day streak', threshold: 7, type: 'streak' },
+    { icon: '&#127775;', title: 'Scholar', desc: '25 sessions completed', threshold: 25 },
+    { icon: '&#9203;', title: 'Five Hours', desc: '300 minutes total', threshold: 300, type: 'minutes' },
+    { icon: '&#128081;', title: 'Master', desc: '50 sessions completed', threshold: 50 },
+  ];
+  for (const ms of milestones) {
+    const val = ms.type === 'streak' ? stats.streak : ms.type === 'minutes' ? stats.totalMinutes : stats.totalSessions;
+    const achieved = val >= ms.threshold;
+    html += `<div class="milestone-row${achieved ? ' achieved' : ' locked'}">`;
+    html += `<div class="milestone-icon">${ms.icon}</div>`;
+    html += `<div class="milestone-info"><div class="ms-title">${ms.title}</div><div class="ms-desc">${ms.desc}</div></div>`;
+    html += `</div>`;
+  }
+  html += '</div>';
+
+  // ── Per-language Journey Map + CEFR bars ──
+  const langNames = { spanish: 'Spanish', arabic: 'Arabic', russian: 'Russian', japanese: 'Japanese' };
+  const cefrLevels = { 'pre-A1': 5, 'A1': 15, 'A1+': 22, 'A2': 35, 'A2+': 45, 'B1': 55, 'B1+': 65, 'B2': 80, 'C1': 92, 'C2': 100 };
+  const cefrJourney = ['pre-A1', 'A1', 'A1+', 'A2', 'A2+', 'B1', 'B1+', 'B2'];
+
+  function levelColor(pctVal) {
+    if (pctVal < 20) return { bar: 'linear-gradient(90deg, #c8a030, #d4b040)', lbl: '#d4b040' };
+    if (pctVal < 40) return { bar: 'linear-gradient(90deg, #c8a830, #c0b040)', lbl: '#c0b040' };
+    if (pctVal < 60) return { bar: 'linear-gradient(90deg, #a8b040, #8bab50)', lbl: '#8bab50' };
+    if (pctVal < 80) return { bar: 'linear-gradient(90deg, #7aad55, #5cb67a)', lbl: '#5cb67a' };
+    return { bar: 'linear-gradient(90deg, #4aad65, #38a058)', lbl: '#4aad65' };
+  }
+
+  for (const [lang, langStats] of Object.entries(stats.byLang)) {
+    const name = langNames[lang] || lang;
+    const sessions = langStats.sessions;
+    const estLevel = sessions < 3 ? 'pre-A1' : sessions < 10 ? 'A1' : sessions < 25 ? 'A1+' : sessions < 50 ? 'A2' : 'A2+';
+    const pct = cefrLevels[estLevel] || 10;
+    const currentIdx = cefrJourney.indexOf(estLevel);
+
+    // Journey map
+    html += `<div class="journey-section">`;
+    html += `<h4>${name} Journey</h4>`;
+    html += `<div class="journey-line">`;
+    for (let i = 0; i < cefrJourney.length; i++) {
+      const level = cefrJourney[i];
+      const state = i < currentIdx ? 'done' : i === currentIdx ? 'current' : 'locked';
+      const labels = {
+        'pre-A1': 'First steps', 'A1': 'Basic phrases', 'A1+': 'Simple conversation',
+        'A2': 'Daily topics', 'A2+': 'Confident basics', 'B1': 'Independent speaker',
+        'B1+': 'Fluent basics', 'B2': 'Advanced conversation'
+      };
+      html += `<div class="journey-node ${state}">`;
+      html += `<span class="jn-title">${level}</span> \u2014 ${labels[level] || level}`;
+      if (state === 'current') html += ` <span style="color:var(--green);font-size:11px;">\u2190 you are here</span>`;
+      html += `</div>`;
+    }
+    html += `</div>`;
+
+    // CEFR bars
+    html += `<div style="margin-top:16px;">`;
+    const skills = ['listening', 'speaking', 'vocabulary', 'grammar', 'pronunciation'];
+    const offsets = { listening: 5, speaking: 0, vocabulary: 3, grammar: -5, pronunciation: 8 };
+    for (const skill of skills) {
+      const barPct = Math.max(5, Math.min(100, pct + (offsets[skill] || 0)));
+      const colors = levelColor(barPct);
+      html += `<div class="cefr-bar">`;
+      html += `<span class="skill-name">${skill}</span>`;
+      html += `<div class="bar-bg"><div class="bar-fill" style="width:${barPct}%;background:${colors.bar}"></div></div>`;
+      html += `<span class="level-label" style="color:${colors.lbl}">${estLevel}</span>`;
+      html += `</div>`;
+    }
+    html += `</div></div>`;
+  }
+
+  // Evidence Board (Achievements)
+  html += renderEvidenceBoard();
+
+  // Recent sessions
+  html += '<div class="session-history"><h4>Recent Sessions</h4>';
+  for (const r of stats.recent) {
+    const date = new Date(r.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const mins = Math.round((r.duration_seconds || 0) / 60);
+    html += `<div class="history-item">`;
+    html += `<span class="date">${date}</span>`;
+    html += `<span class="lang">${r.language}</span>`;
+    html += `<span class="duration">${mins} min</span>`;
+    html += `</div>`;
+  }
+  html += '</div>';
+
+  body.innerHTML = html;
+}
+
+// ── Cheat Sheet ──
+let cheatWords = [];
+
+function toggleCheatSheet() {
+  const sheet = document.getElementById('cheatSheet');
+  const btn = document.getElementById('cheatBtn');
+  sheet.classList.toggle('visible');
+  btn.classList.toggle('active');
+}
+
+function addCheatWord(term, meaning, reading, romaji) {
+  // Skip non-target-language words, punctuation, placeholders
+  if (!term || term === '...' || term.length === 0) return;
+  if (selectedLang === 'japanese' && !/[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(term)) return;
+  if (selectedLang === 'russian' && !/[\u0400-\u04FF]/.test(term)) return;
+  if (selectedLang === 'arabic' && !/[\u0600-\u06FF]/.test(term)) return;
+  // Skip if meaning is just "..."
+  if (meaning === '...') return;
+  // Avoid duplicates — update meaning if we now have one
+  const existing = cheatWords.find(w => w.term === term);
+  if (existing) {
+    if (meaning && meaning !== '...' && existing.meaning === '...') existing.meaning = meaning;
+    renderCheatSheet();
+    return;
+  }
+  cheatWords.push({ term, meaning: meaning || '', reading: reading || '', romaji: romaji || '' });
+  renderCheatSheet();
+  // Persist to localStorage
+  localStorage.setItem('watson_cheat_' + (selectedLang || 'default'), JSON.stringify(cheatWords));
+  // Auto-open the panel on first word
+  if (cheatWords.length === 1) {
+    document.getElementById('cheatSheet').classList.add('visible');
+    document.getElementById('cheatBtn').classList.add('active');
+  }
+}
+
+function renderCheatSheet() {
+  const list = document.getElementById('cheatList');
+  if (cheatWords.length === 0) {
+    list.innerHTML = '<span class="cheat-empty">Words will appear here as you learn them.</span>';
+    return;
+  }
+  list.innerHTML = cheatWords.map(w => {
+    let html = `<div class="cheat-word">`;
+    // For Japanese: show kanji with furigana
+    if (w.reading) {
+      html += `<div class="cw-term"><ruby>${w.term}<rt>${w.reading}</rt></ruby></div>`;
+      if (w.romaji) html += `<div class="cw-romaji">${w.romaji}</div>`;
+    } else {
+      html += `<div class="cw-term">${w.term}</div>`;
+    }
+    html += `<div class="cw-meaning">${w.meaning}</div>`;
+    html += `</div>`;
+    return html;
+  }).join('');
+}
+
+// Analyze tutor turn: extract vocabulary AND provide pronunciation/breakdown
+// This is the "copilot" — a second model annotating what the voice model said
+async function analyzeAndAnnotate(tutorText, turnBubbleId, lang, apiKey) {
+  if (!apiKey || tutorText.length < 3 || !turnBubbleId) return;
+
+  const langPrompts = {
+    japanese: `Analyze this Japanese tutor's response. Return JSON with:
+1. "vocab": array of vocabulary items, each with: word (kanji if applicable), reading (hiragana), romaji, meaning (English). Include all content words and important particles.
+2. "pronunciation": the FULL sentence rewritten with furigana using HTML ruby tags for EVERY kanji. Format: <ruby>漢字<rt>かんじ</rt></ruby>. Also append romaji in parentheses. Example: "<ruby>元気<rt>げんき</rt></ruby>？ (genki?)"
+3. "breakdown": a WORD-BY-WORD literal translation. Format: "word1(meaning1) word2(meaning2)". Example: "私(I) も(also) 元気(good) だ(am) よ(emphasis)"
+
+Example output:
+{"vocab":[{"word":"元気","reading":"げんき","romaji":"genki","meaning":"healthy/energetic"}],"pronunciation":"<ruby>元気<rt>げんき</rt></ruby>？ <ruby>今日<rt>きょう</rt></ruby>は<ruby>何<rt>なに</rt></ruby>する<ruby>予定<rt>よてい</rt></ruby>？ (genki? kyou wa nani suru yotei?)","breakdown":"元気(well)？ 今日(today) は(topic) 何(what) する(do) 予定(plan)？"}`,
+
+    arabic: `Analyze this Arabic tutor's response. Return JSON with:
+1. "vocab": array of vocabulary items, each with: word (Arabic), romaji (transliteration), meaning (English).
+2. "pronunciation": the full sentence transliterated into Latin letters.
+3. "breakdown": a short 1-line explanation in English.`,
+
+    russian: `Analyze this Russian tutor's response. Return JSON with:
+1. "vocab": array of vocabulary items, each with: word (Cyrillic), romaji (transliteration), meaning (English).
+2. "pronunciation": the full sentence transliterated into Latin letters.
+3. "breakdown": a short 1-line explanation in English.`,
+
+    spanish: `Analyze this Spanish tutor's response. Return JSON with:
+1. "vocab": array of vocabulary items, each with: word, meaning (English). Only include words that were taught or are important for a learner.
+2. "pronunciation": null (not needed for Spanish).
+3. "breakdown": a WORD-BY-WORD literal translation. Example: "la(the) casa(house) blanca(white) es(is) grande(big)" — show how Spanish maps to English literally, word by word.`,
+  };
+
+  const prompt = `${langPrompts[lang] || langPrompts.spanish}
+
+Output ONLY valid JSON, nothing else. If the tutor said very little, still return the structure with empty vocab array.
+
+Tutor said: "${tutorText}"`;
+
+  try {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+      { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) }
+    );
+    const data = await response.json();
+    if (data.error) return;
+
+    let raw = data.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+    if (raw.startsWith('```')) raw = raw.split('\n', 2)[1]?.split('```')[0] || '{}';
+    raw = raw.trim();
+
+    const result = JSON.parse(raw);
+
+    // Add vocab to cheat sheet
+    const vocabItems = [];
+    for (const w of (result.vocab || [])) {
+      if (w.word && w.meaning) {
+        addCheatWord(w.word, w.meaning, w.reading, w.romaji);
+        vocabItems.push({ term: w.word, reading: w.reading || '', romaji: w.romaji || '', meaning: w.meaning });
+      }
+    }
+
+    // Annotate the bubble with pronunciation + breakdown
+    let annotation = '';
+
+    // Pronunciation line (romaji for non-Japanese, ruby+romaji for Japanese)
+    if (result.pronunciation) {
+      annotation += `<div style="margin-top:8px;padding-top:6px;border-top:1px solid var(--border);">`;
+      if (lang === 'japanese') {
+        // Allow HTML ruby tags to render — Gemini returns formatted furigana
+        annotation += `<div style="font-size:15px;color:var(--cream);line-height:2.2;">${result.pronunciation}</div>`;
+      } else {
+        annotation += `<div style="font-size:13px;color:var(--amber);font-family:var(--mono);letter-spacing:0.5px;">${escapeHtml(result.pronunciation)}</div>`;
+      }
+      annotation += `</div>`;
+    }
+
+    // Word-by-word literal gloss
+    if (result.breakdown) {
+      // Style the parenthetical meanings in a different color
+      const styledBreakdown = escapeHtml(result.breakdown)
+        .replace(/\(([^)]+)\)/g, '<span style="color:var(--green);font-size:11px;">($1)</span>');
+      annotation += `<div style="font-size:13px;color:var(--cream);font-family:var(--mono);margin-top:6px;line-height:1.8;${lang !== 'japanese' ? 'padding-top:6px;border-top:1px solid var(--border);' : ''}">${styledBreakdown}</div>`;
+    }
+
+    // Find the bubble by its turn ID (survives DOM changes)
+    const bubble = document.querySelector(`[data-turn-id="${turnBubbleId}"]`);
+    if (annotation && bubble) {
+      bubble.innerHTML = bubble.innerHTML + annotation;
+
+      // Scroll to show the annotation
+      document.getElementById('transcript').scrollTop = document.getElementById('transcript').scrollHeight;
+    }
+  } catch (e) {
+    // Silently fail
+  }
+}
+
+// ── Fetch English meanings for word breakdown (async, idle time) ──
+async function fetchWordMeanings(words, breakdownId, apiKey, indices) {
+  if (!apiKey || words.length === 0) return;
+  // indices maps words array position to breakdown table row index
+
+  // Wait for idle
+  await new Promise(r => {
+    if ('requestIdleCallback' in window) requestIdleCallback(r, { timeout: 3000 });
+    else setTimeout(r, 500);
+  });
+
+  const wordList = words.map(w => w.surface).join(', ');
+  const prompt = `Give the English meaning of each Japanese word. Return a JSON array of strings, one meaning per word in the same order. Keep each meaning to 1-3 words. Words: ${wordList}
+
+Output ONLY a JSON array like ["meaning1","meaning2",...], nothing else.`;
+
+  try {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+      { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) }
+    );
+    const data = await response.json();
+    if (data.error) return;
+
+    let raw = data.candidates?.[0]?.content?.parts?.[0]?.text || '[]';
+    if (raw.startsWith('```')) raw = raw.split('\n', 2)[1]?.split('```')[0] || '[]';
+    const meanings = JSON.parse(raw.trim());
+
+    // Fill in the breakdown table at the correct indices
+    const particles = ['は','が','の','を','に','で','と','も','へ','か','よ','ね','な','だ'];
+    const idxMap = indices || words.map((_, i) => i);
+    for (let i = 0; i < meanings.length && i < words.length; i++) {
+      const rowIdx = idxMap[i];
+      const el = document.getElementById(`${breakdownId}-m${rowIdx}`);
+      if (el) el.textContent = meanings[i];
+      if (words[i].surface && meanings[i] && words[i].surface.length > 1 && !particles.includes(words[i].surface)) {
+        addCheatWord(words[i].surface, meanings[i], words[i].reading, words[i].romaji);
+      }
+    }
+  } catch (e) {
+    // Silently fail
+  }
+}
+
+// ── Gamification: Ranks ──
+const RANKS = {
+  spanish: [
+    { name: 'Forastero', meaning: 'Stranger', minSessions: 0, minWords: 0 },
+    { name: 'Vecino', meaning: 'Neighbor', minSessions: 5, minWords: 15 },
+    { name: 'Amigo', meaning: 'Friend', minSessions: 15, minWords: 50 },
+    { name: 'Narrador', meaning: 'Storyteller', minSessions: 30, minWords: 150 },
+    { name: 'Poeta', meaning: 'Poet', minSessions: 50, minWords: 300 },
+    { name: 'Elementary', meaning: 'Master', minSessions: 100, minWords: 500 },
+  ],
+  japanese: [
+    { name: '\u898B\u7FD2\u3044', meaning: 'Apprentice', minSessions: 0, minWords: 0 },
+    { name: '\u5192\u967A\u8005', meaning: 'Adventurer', minSessions: 5, minWords: 15 },
+    { name: '\u6226\u58EB', meaning: 'Warrior', minSessions: 15, minWords: 50 },
+    { name: '\u968A\u9577', meaning: 'Captain', minSessions: 30, minWords: 150 },
+    { name: '\u82F1\u96C4', meaning: 'Hero', minSessions: 50, minWords: 300 },
+    { name: 'Elementary', meaning: 'Master', minSessions: 100, minWords: 500 },
+  ],
+  arabic: [
+    { name: '\u0637\u0627\u0644\u0628', meaning: 'Student', minSessions: 0, minWords: 0 },
+    { name: '\u0642\u0627\u0631\u0626', meaning: 'Reader', minSessions: 5, minWords: 15 },
+    { name: '\u0645\u062A\u062D\u062F\u062B', meaning: 'Speaker', minSessions: 15, minWords: 50 },
+    { name: '\u0643\u0627\u062A\u0628', meaning: 'Writer', minSessions: 30, minWords: 150 },
+    { name: '\u0623\u062F\u064A\u0628', meaning: 'Scholar', minSessions: 50, minWords: 300 },
+    { name: 'Elementary', meaning: 'Master', minSessions: 100, minWords: 500 },
+  ],
+  russian: [
+    { name: '\u0423\u0447\u0435\u043D\u0438\u043A', meaning: 'Pupil', minSessions: 0, minWords: 0 },
+    { name: '\u0427\u0438\u0442\u0430\u0442\u0435\u043B\u044C', meaning: 'Reader', minSessions: 5, minWords: 15 },
+    { name: '\u0421\u043E\u0431\u0435\u0441\u0435\u0434\u043D\u0438\u043A', meaning: 'Conversationalist', minSessions: 15, minWords: 50 },
+    { name: '\u0420\u0430\u0441\u0441\u043A\u0430\u0437\u0447\u0438\u043A', meaning: 'Storyteller', minSessions: 30, minWords: 150 },
+    { name: '\u041C\u044B\u0441\u043B\u0438\u0442\u0435\u043B\u044C', meaning: 'Thinker', minSessions: 50, minWords: 300 },
+    { name: 'Elementary', meaning: 'Master', minSessions: 100, minWords: 500 },
+  ],
+};
+
+function getRankForLang(lang) {
+  const ranks = RANKS[lang];
+  if (!ranks) return null;
+  const records = JSON.parse(localStorage.getItem('watson_sessions') || '[]');
+  const sessions = records.filter(r => r.language === lang).length;
+  const words = (JSON.parse(localStorage.getItem('watson_cheat_' + lang) || '[]')).length;
+  let currentRank = ranks[0];
+  for (const rank of ranks) {
+    if (sessions >= rank.minSessions && words >= rank.minWords) {
+      currentRank = rank;
+    }
+  }
+  const currentIdx = ranks.indexOf(currentRank);
+  const nextRank = currentIdx < ranks.length - 1 ? ranks[currentIdx + 1] : null;
+  return { rank: currentRank, nextRank, sessions, words };
+}
+
+// ── Gamification: Gaslight Lamp ──
+function updateGaslightLamp() {
+  const stats = getSessionStats();
+  const badge = document.getElementById('streakBadge');
+  const streakNum = document.getElementById('streakNum');
+  if (!badge || !streakNum) return;
+
+  if (!stats || stats.totalSessions === 0) {
+    badge.className = 'streak-badge cold';
+    streakNum.textContent = '';
+    return;
+  }
+
+  const streak = stats.streak;
+  const today = new Date().toISOString().slice(0, 10);
+  const records = JSON.parse(localStorage.getItem('watson_sessions') || '[]');
+  const practicedToday = records.some(r => r.date.slice(0, 10) === today);
+
+  if (!practicedToday && streak === 0) {
+    badge.className = 'streak-badge cold';
+  } else if (streak >= 7) {
+    badge.className = 'streak-badge active blazing';
+  } else {
+    badge.className = 'streak-badge active';
+  }
+  streakNum.textContent = streak > 0 ? streak : '';
+}
+
+// ── Gamification: Watson Observation ──
+function updateWatsonObservation() {
+  const obsEl = document.getElementById('watsonObservation');
+  const records = JSON.parse(localStorage.getItem('watson_sessions') || '[]');
+  if (records.length === 0) { obsEl.style.display = 'none'; return; }
+  obsEl.style.display = '';
+
+  // Count sessions this week (Mon-Sun)
+  const now = new Date();
+  const dayOfWeek = (now.getDay() + 6) % 7; // 0=Mon, 6=Sun
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - dayOfWeek);
+  monday.setHours(0, 0, 0, 0);
+
+  const weekSessions = records.filter(r => new Date(r.date) >= monday);
+  const weekCount = weekSessions.length;
+
+  // Total words across all languages
+  let totalWords = 0;
+  for (const lang of ['spanish', 'arabic', 'russian', 'japanese']) {
+    totalWords += (JSON.parse(localStorage.getItem('watson_cheat_' + lang) || '[]')).length;
+  }
+
+  // Generate observation text with streak
+  const stats = getSessionStats();
+  const streak = stats ? stats.streak : 0;
+  const streakNote = streak >= 7 ? ` ${streak}-day streak — the flame burns bright.` : streak >= 3 ? ` ${streak}-day streak.` : '';
+  let obsText = '';
+  if (weekCount === 0) {
+    obsText = 'The week has been quiet. A single session could reignite the flame.';
+  } else if (weekCount === 1) {
+    obsText = `1 session this week.${streakNote} ${totalWords > 20 ? 'Your vocabulary is taking shape.' : 'Every case begins with a single clue.'}`;
+  } else if (weekCount <= 3) {
+    obsText = `${weekCount} sessions this week.${streakNote} ${totalWords > 50 ? 'Your vocabulary is growing steadily.' : 'The pattern is forming.'}`;
+  } else if (weekCount <= 5) {
+    obsText = `${weekCount} sessions this week.${streakNote} ${totalWords > 100 ? 'The evidence speaks for itself.' : 'The method is working.'}`;
+  } else {
+    obsText = `${weekCount} sessions this week.${streakNote} I could not have deduced a more dedicated student.`;
+  }
+
+  // Build 7-day row (Mon-Sun)
+  const dayLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+  const sessionDaySet = new Set(records.map(r => r.date.slice(0, 10)));
+  let weekDots = '';
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    const ds = d.toISOString().slice(0, 10);
+    const filled = sessionDaySet.has(ds);
+    const isToday = i === dayOfWeek;
+    weekDots += `<div class="obs-day-label">${dayLabels[i]}<div class="obs-day-dot${filled ? ' filled' : ''}${isToday ? ' today-dot' : ''}"></div></div>`;
+  }
+
+  obsEl.innerHTML = `
+    <div class="obs-label">Watson's Observation</div>
+    <div class="obs-text">"${obsText}"</div>
+    <div class="obs-week">${weekDots}</div>
+  `;
+}
+
+// ── Gamification: Update Language Cards ──
+function updateLangCards() {
+  for (const lang of ['spanish', 'arabic', 'russian', 'japanese']) {
+    const rankData = getRankForLang(lang);
+    const rankEl = document.getElementById('rank-' + lang);
+    const sessEl = document.getElementById('sessions-' + lang);
+    if (!rankData || rankData.sessions === 0) {
+      if (rankEl) rankEl.textContent = '';
+      if (sessEl) sessEl.innerHTML = '<span style="font-size:11px;color:var(--text3);">Ready to begin</span>';
+      continue;
+    }
+
+    // Rank
+    if (rankEl) {
+      rankEl.innerHTML = `${rankData.rank.name} <span class="rank-meaning">\u2014 ${rankData.rank.meaning}</span>`;
+    }
+
+    // Sessions + progress bar + working on
+    if (sessEl) {
+      const nextRank = rankData.nextRank;
+      let progressHtml = `${rankData.sessions} session${rankData.sessions !== 1 ? 's' : ''}`;
+
+      // Progress toward next rank
+      if (nextRank) {
+        const pct = Math.min(100, Math.round((rankData.sessions / nextRank.minSessions) * 100));
+        progressHtml += `<div class="card-progress"><div class="card-progress-bar"><div class="card-progress-fill" style="width:${pct}%"></div></div></div>`;
+      }
+
+      // Words learned count
+      const words = JSON.parse(localStorage.getItem('watson_cheat_' + lang) || '[]');
+      if (words.length > 0) {
+        progressHtml += `<div class="card-working-on">${words.length} words learned</div>`;
+      }
+
+      sessEl.innerHTML = progressHtml;
+    }
+  }
+}
+
+// ── Gamification: Evidence Board (Achievements) ──
+function getAchievements() {
+  const records = JSON.parse(localStorage.getItem('watson_sessions') || '[]');
+  const stats = getSessionStats();
+  if (!stats) return [];
+
+  // Total words
+  let totalWords = 0;
+  for (const lang of ['spanish', 'arabic', 'russian', 'japanese']) {
+    totalWords += (JSON.parse(localStorage.getItem('watson_cheat_' + lang) || '[]')).length;
+  }
+
+  // Sessions in one week check
+  const now = new Date();
+  const oneWeekAgo = new Date(now);
+  oneWeekAgo.setDate(now.getDate() - 7);
+  const weekSessions = records.filter(r => new Date(r.date) >= oneWeekAgo);
+
+  // Languages practiced this week
+  const weekLangs = new Set(weekSessions.map(r => r.language));
+
+  // Longest session
+  const longestSession = Math.max(0, ...records.map(r => r.duration_seconds || 0));
+
+  // Max sessions for one language
+  const langCounts = {};
+  for (const r of records) {
+    langCounts[r.language] = (langCounts[r.language] || 0) + 1;
+  }
+  const maxLangSessions = Math.max(0, ...Object.values(langCounts));
+
+  const achievements = [
+    {
+      id: 'first_words', icon: '\u{1F56F}', title: 'First Words',
+      desc: 'Complete 1 session',
+      unlocked: stats.totalSessions >= 1
+    },
+    {
+      id: 'method_begins', icon: '\u{1F50D}', title: 'The Method Begins',
+      desc: '3 sessions in one week',
+      unlocked: weekSessions.length >= 3
+    },
+    {
+      id: 'elementary_dear', icon: '\u{1F9E0}', title: 'Elementary, My Dear',
+      desc: 'Learn 10 words',
+      unlocked: totalWords >= 10
+    },
+    {
+      id: 'lamp_lit', icon: '\u{1F56F}', title: 'Lamp Lit',
+      desc: '3-day streak',
+      unlocked: stats.streak >= 3
+    },
+    {
+      id: 'the_watch', icon: '\u231A', title: 'The Watch',
+      desc: '7-day streak',
+      unlocked: stats.streak >= 7
+    },
+    {
+      id: 'growing_library', icon: '\u{1F4DA}', title: 'Growing Library',
+      desc: '100 words learned',
+      unlocked: totalWords >= 100
+    },
+    {
+      id: 'the_monologue', icon: '\u{1F399}', title: 'The Monologue',
+      desc: '30-minute session',
+      unlocked: longestSession >= 1800
+    },
+    {
+      id: 'the_polyglot', icon: '\u{1F30D}', title: 'The Polyglot',
+      desc: '2 languages in one week',
+      unlocked: weekLangs.size >= 2
+    },
+    {
+      id: 'persistence', icon: '\u{1F4CB}', title: 'Persistence',
+      desc: '10 total sessions',
+      unlocked: stats.totalSessions >= 10
+    },
+    {
+      id: 'keeper_flame', icon: '\u{1F525}', title: 'Keeper of the Flame',
+      desc: '30-day streak',
+      unlocked: stats.streak >= 30
+    },
+    {
+      id: 'the_lexicon', icon: '\u{1F4D6}', title: 'The Lexicon',
+      desc: '500 words learned',
+      unlocked: totalWords >= 500
+    },
+    {
+      id: 'case_closed', icon: '\u{1F4C1}', title: 'Case Closed',
+      desc: '50 sessions in one language',
+      unlocked: maxLangSessions >= 50
+    },
+  ];
+  return achievements;
+}
+
+function renderEvidenceBoard() {
+  const achievements = getAchievements();
+  let html = '<div class="evidence-board"><h4>Evidence Board</h4><div class="evidence-grid">';
+  for (const a of achievements) {
+    const cls = a.unlocked ? 'unlocked' : 'locked';
+    html += `<div class="evidence-card ${cls}">`;
+    html += `<div class="ev-icon">${a.icon}</div>`;
+    html += `<div class="ev-title">${a.title}</div>`;
+    if (a.unlocked) {
+      html += `<div class="ev-desc">${a.desc}</div>`;
+    } else {
+      html += `<div class="ev-desc">???</div>`;
+    }
+    html += `</div>`;
+  }
+  html += '</div></div>';
+  return html;
+}
+
+// ── Gamification: Elementary Ending ──
+function checkElementaryRank() {
+  for (const lang of ['spanish', 'arabic', 'russian', 'japanese']) {
+    const rankData = getRankForLang(lang);
+    if (rankData && rankData.rank.name === 'Elementary') {
+      const shownKey = 'watson_elementary_shown_' + lang;
+      if (!localStorage.getItem(shownKey)) {
+        localStorage.setItem(shownKey, 'true');
+        showElementaryEnding();
+        return;
+      }
+    }
+  }
+}
+
+function showElementaryEnding() {
+  document.getElementById('setupScreen').style.display = 'none';
+  document.getElementById('sessionScreen').classList.remove('active');
+  document.getElementById('reviewScreen').classList.remove('active');
+  document.getElementById('progressScreen').classList.remove('active');
+  document.getElementById('elementaryScreen').classList.add('active');
+
+  // Set lamp to blazing
+  const lampIcon = document.getElementById('lampIcon');
+  lampIcon.className = 'lamp-icon blazing';
+
+  const lines = [
+    'When we began, every word was a mystery.',
+    'Every sentence, a case unsolved.',
+    '',
+    'I could not have deduced it better myself.',
+    '',
+    'It was never elementary \u2014 until it was.',
+    '',
+    'My dear friend, the case is closed.',
+    'But the world is full of mysteries yet.',
+    '',
+    'Keep learning.',
+  ];
+
+  const fullText = lines.join('\n');
+  const textEl = document.getElementById('elementaryText');
+  textEl.innerHTML = '<span class="typewriter-cursor"></span>';
+
+  let charIdx = 0;
+  const typeInterval = setInterval(() => {
+    if (charIdx >= fullText.length) {
+      clearInterval(typeInterval);
+      // Remove cursor
+      const cursor = textEl.querySelector('.typewriter-cursor');
+      if (cursor) cursor.remove();
+      // Show signature and button
+      setTimeout(() => {
+        document.getElementById('elementarySignature').classList.add('visible');
+        setTimeout(() => {
+          document.getElementById('elementaryBtnWrap').classList.add('visible');
+        }, 800);
+      }, 500);
+      return;
+    }
+    const char = fullText[charIdx];
+    const cursor = textEl.querySelector('.typewriter-cursor');
+    if (char === '\n') {
+      cursor.insertAdjacentHTML('beforebegin', '<br>');
+    } else {
+      cursor.insertAdjacentText('beforebegin', char);
+    }
+    charIdx++;
+  }, 50);
+}
+
+function dismissElementary() {
+  document.getElementById('elementaryScreen').classList.remove('active');
+  document.getElementById('elementarySignature').classList.remove('visible');
+  document.getElementById('elementaryBtnWrap').classList.remove('visible');
+  document.getElementById('setupScreen').style.display = '';
+  refreshHomeScreen();
+}
+
+// ── Refresh home screen data ──
+function refreshHomeScreen() {
+  updateGaslightLamp();
+  updateWatsonObservation();
+  updateLangCards();
+  updateTitleForReturning();
+  updateLantern();
+  updateCaseBoard();
+}
+
+function updateCaseBoard() {
+  const el = document.getElementById('caseBoardContent');
+  if (!el) return;
+
+  const records = JSON.parse(localStorage.getItem('watson_sessions') || '[]');
+  if (records.length === 0) {
+    el.innerHTML = '<div style="color:var(--text3);font-family:var(--mono);font-size:11px;font-style:italic;padding:20px 0;">No cases yet. Complete a session to begin your investigation.</div>';
+    return;
+  }
+
+  let html = '';
+
+  // Active Cases — weak points from reviews (simulated from cheat sheet gaps + common errors)
+  // In a full implementation, these would come from watson-voice-context.json
+  // For now, generate from session data
+  const activeCases = [];
+  const solvedCases = [];
+
+  // Build cases from language-specific common weak points
+  const langFlags = { spanish: '&#127466;&#127480;', japanese: '&#127471;&#127477;', arabic: '&#127480;&#127462;', russian: '&#127479;&#127482;' };
+  const commonWeakPoints = {
+    spanish: ['ser vs estar', 'preterite endings', 'por vs para', 'subjunctive mood'],
+    japanese: ['particle usage', 'verb conjugation', 'kanji reading', 'pitch accent'],
+    arabic: ['root patterns', 'verb forms', 'case endings'],
+    russian: ['case system', 'verb aspects', 'pronunciation'],
+  };
+
+  for (const [lang, langRecords] of Object.entries(
+    records.reduce((acc, r) => { (acc[r.language] = acc[r.language] || []).push(r); return acc; }, {})
+  )) {
+    const sessions = langRecords.length;
+    const weakPoints = commonWeakPoints[lang] || [];
+
+    // First weak point gets "solved" after 10 sessions, second after 20, etc.
+    weakPoints.forEach((wp, i) => {
+      const threshold = (i + 1) * 8;
+      const firstSeen = new Date(langRecords[0]?.date || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      if (sessions >= threshold) {
+        solvedCases.push({ name: wp, lang, flag: langFlags[lang], detail: `Closed after ${threshold} sessions` });
+      } else {
+        const sightings = Math.min(sessions, threshold);
+        activeCases.push({ name: wp, lang, flag: langFlags[lang], detail: `Spotted ${sightings} times. First identified ${firstSeen}.`, progress: Math.round((sightings / threshold) * 100) });
+      }
+    });
+  }
+
+  // Active cases
+  if (activeCases.length > 0) {
+    html += '<div class="cb-section-title">&#128270; Active Cases</div>';
+    for (const c of activeCases.slice(0, 6)) {
+      html += `<div class="cb-case">
+        <span class="case-lang">${c.flag}</span>
+        <div class="case-name">${c.name}</div>
+        <div class="case-detail">${c.detail}</div>
+      </div>`;
+    }
+  }
+
+  // Solved cases
+  if (solvedCases.length > 0) {
+    html += '<div class="cb-section-title">&#10003; Solved</div>';
+    for (const c of solvedCases.slice(0, 3)) {
+      html += `<div class="cb-case solved">
+        <span class="case-lang">${c.flag}</span>
+        <div class="case-name">${c.name}</div>
+        <div class="case-detail">${c.detail}</div>
+      </div>`;
+    }
+  }
+
+  // Last session
+  const last = records[records.length - 1];
+  if (last) {
+    const date = new Date(last.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+    const mins = Math.round((last.duration_seconds || 0) / 60);
+    const words = JSON.parse(localStorage.getItem('watson_cheat_' + last.language) || '[]');
+    const lastWords = words.slice(-3).map(w => w.term).join(', ');
+    html += '<div class="cb-section-title">Last Session</div>';
+    html += `<div class="cb-last-session">
+      <div class="ls-date">${date} · ${last.language} · ${mins} min</div>
+      ${lastWords ? '<div style="margin-top:4px;">Learned: ' + lastWords + '</div>' : ''}
+    </div>`;
+  }
+
+  // Achievement count
+  const achievements = typeof getAchievements === 'function' ? getAchievements() : [];
+  const achieved = achievements.filter(a => a.achieved).length;
+  const total = achievements.length;
+  if (total > 0) {
+    html += `<div class="cb-achievements">
+      <div class="ach-count">${achieved}/${total}</div>
+      <div class="ach-label">Commendations</div>
+    </div>`;
+  }
+
+  el.innerHTML = html;
+}
+
+function updateTitleForReturning() {
+  const records = JSON.parse(localStorage.getItem('watson_sessions') || '[]');
+  const title = document.getElementById('setupTitle');
+  if (records.length > 0 && title) {
+    title.classList.add('returning');
+    // Rotate greetings so it feels fresh
+    const greetings = [
+      'At your service, <em>shall we continue?</em>',
+      'The study is warm, <em>shall we begin?</em>',
+      'Good to see you, <em>where were we?</em>',
+      'Another day, <em>another mystery.</em>',
+      'The lamp is lit, <em>ready when you are.</em>',
+      'Ah, you\'re here. <em>Shall we?</em>',
+      'The case continues, <em>let\'s proceed.</em>',
+    ];
+    const h2 = title.querySelector('h2');
+    if (h2) {
+      const idx = Math.floor(Math.random() * greetings.length);
+      h2.innerHTML = greetings[idx];
+    }
+  }
+}
+
+function updateLantern() {
+  // Now handled by updateGaslightLamp via the streak badge in the header
+}
+
+// ── Init ──
+(function init() {
+  if (!getSettings().apiKey) setTimeout(openSettings, 500);
+  checkReady();
+  refreshHomeScreen();
+})();
+</script>
+</body>
+</html>
