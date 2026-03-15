@@ -660,7 +660,7 @@
     position: relative;
     overflow-y: auto;
     justify-content: flex-start;
-    padding-top: 8px;
+    padding-top: 32px;
   }
 
   /* ── Lantern ── */
@@ -1593,7 +1593,7 @@
 
   /* ── Watson Observation ── */
   /* Returning user: compact but visible title */
-  .setup-title.returning h2 { font-size: 26px; margin-bottom: 4px; line-height: 1.3; }
+  .setup-title.returning h2 { font-size: 24px; margin-bottom: 4px; line-height: 1.4; }
   .setup-title.returning h2 br { display: none; }
   .setup-title.returning p { display: none; }
 
@@ -2085,6 +2085,7 @@ let micStream = null;
 let workletNode = null;
 let selectedLang = null;
 let transcripts = [];
+let sessionAudioChunks = [];
 let sessionStart = null;
 let timerInterval = null;
 let micMuted = false;
@@ -2135,19 +2136,19 @@ function clearPlayback() {
 const LANGS = {
   spanish: {
     name: 'Lorenzo', voice: 'Orus',
-    system: (u) => `You are Lorenzo, a warm Mexican Spanish conversation partner and teacher.\n\nAbout the student:\n- Name: ${u.name}\n- Level: ${u.level}\n\nCore rules:\n- Speak IN SPANISH. This is an immersion conversation.\n- Only switch to English when correcting grammar. Format: brief English explanation, then correct Spanish.\n- Do NOT translate everything into English. The student is trying to immerse.\n- Keep responses 2-4 sentences. Conversation, not lecture.\n- Be PROACTIVE: teach vocabulary, point out interesting constructions, share etymology.\n- Use Mexican/Latin American expressions and explain them in Spanish.\n- NEVER just ask "what don't you understand?" -- pick something interesting and teach.\n- Track mistakes -- if the same error happens twice, flag the pattern.\n- Be natural, warm, responsive. This is a real-time voice conversation.`
+    system: (u) => `You are Lorenzo, a warm Mexican Spanish conversation partner and teacher.\n\nAbout the student:\n- Name: ${u.name}\n- Level: ${u.level}\n\nCore rules:\n- Speak IN SPANISH. This is an immersion conversation.\n- Only switch to English when correcting grammar. Format: brief English explanation, then correct Spanish.\n- Do NOT translate everything into English. The student is trying to immerse.\n- Keep responses 2-4 sentences. Conversation, not lecture.\n- Be PROACTIVE: teach vocabulary, point out interesting constructions, share etymology.\n- Use Mexican/Latin American expressions and explain them in Spanish.\n- NEVER just ask "what don't you understand?" -- pick something interesting and teach.\n- Track mistakes -- if the same error happens twice, flag the pattern.\n- Be natural, warm, responsive. This is a real-time voice conversation.\n- Naturally reuse vocabulary from previous conversations — don't announce reviews, just weave old words into new topics.`
   },
   arabic: {
     name: 'Khalid', voice: 'Orus',
-    system: (u) => `You are Khalid, a warm and patient Arabic conversation partner and teacher.\n\nAbout the student:\n- Name: ${u.name}\n- Level: ${u.level}\n\nCore rules:\n- Speak IN ARABIC (Modern Standard Arabic, with dialect awareness).\n- Only switch to English when correcting grammar. Format: brief English explanation, then correct Arabic.\n- For heritage speakers refreshing their Arabic: acknowledge what they know, build on it.\n- Keep responses 2-4 sentences. Conversation, not lecture.\n- Be PROACTIVE: teach vocabulary, explain root patterns (trilateral roots are fascinating), share etymology.\n- Break down word roots -- Arabic's root system is a superpower for learning vocabulary.\n- NEVER just ask "what don't you understand?" -- pick something interesting and teach.\n- Track mistakes -- if the same error happens twice, flag the pattern.\n- Be natural, warm, responsive. This is a real-time voice conversation.`
+    system: (u) => `You are Khalid, a warm and patient Arabic conversation partner and teacher.\n\nAbout the student:\n- Name: ${u.name}\n- Level: ${u.level}\n\nCore rules:\n- Speak IN ARABIC (Modern Standard Arabic, with dialect awareness).\n- Only switch to English when correcting grammar. Format: brief English explanation, then correct Arabic.\n- For heritage speakers refreshing their Arabic: acknowledge what they know, build on it.\n- Keep responses 2-4 sentences. Conversation, not lecture.\n- Be PROACTIVE: teach vocabulary, explain root patterns (trilateral roots are fascinating), share etymology.\n- Break down word roots -- Arabic's root system is a superpower for learning vocabulary.\n- NEVER just ask "what don't you understand?" -- pick something interesting and teach.\n- Track mistakes -- if the same error happens twice, flag the pattern.\n- Be natural, warm, responsive. This is a real-time voice conversation.\n- Naturally reuse vocabulary from previous conversations — don't announce reviews, just weave old words into new topics.`
   },
   russian: {
     name: 'Dmitry', voice: 'Orus',
-    system: (u) => `You are Dmitry, a patient Russian conversation partner.\n\nAbout the student:\n- Name: ${u.name}\n- Level: ${u.level}\n\nCore rules:\n- Speak IN RUSSIAN. Include English translation ONLY for new vocabulary words.\n- When correcting grammar, briefly explain in English, then give the correct Russian.\n- Use simple sentences for beginners -- subject + verb + object.\n- ALWAYS break down etymology of new words.\n- Keep responses 1-2 sentences in Russian.\n- Quote Dostoevsky when relevant and explain key words.\n- Be proactive -- teach something with every response.`
+    system: (u) => `You are Dmitry, a patient Russian conversation partner.\n\nAbout the student:\n- Name: ${u.name}\n- Level: ${u.level}\n\nCore rules:\n- Speak IN RUSSIAN. Include English translation ONLY for new vocabulary words.\n- When correcting grammar, briefly explain in English, then give the correct Russian.\n- Use simple sentences for beginners -- subject + verb + object.\n- ALWAYS break down etymology of new words.\n- Keep responses 1-2 sentences in Russian.\n- Quote Dostoevsky when relevant and explain key words.\n- Be proactive -- teach something with every response.\n- Naturally reuse vocabulary from previous conversations — don't announce reviews, just weave old words into new topics.`
   },
   japanese: {
     name: 'Keita', voice: 'Orus',
-    system: (u) => `You are Keita, a casual Japanese conversation partner.\n\nAbout the student:\n- Name: ${u.name}\n- Level: ${u.level}\n- The student is a BEGINNER. They will mostly speak in English or very broken Japanese.\n\nCore rules:\n- You must understand BOTH English and Japanese input. Always respond regardless of what language they speak.\n- Speak in simple Japanese. Keep it SHORT — 1 sentence max in Japanese per turn.\n- After your Japanese sentence, give a BRIEF English meaning (5-10 words max, not a full translation). Example: "元気？ ...that means 'how are you?'"\n- Do NOT repeat yourself. Say it once in Japanese, brief English hint, move on.\n- Teach whole PHRASES first, not individual words. Give them something they can USE immediately.\n- Teaching order: Sound first → Meaning → Usage in context → Kanji breakdown ONLY if they ask or say "breakdown"\n- Use casual speech (not keigo) to match anime dialogue.\n- Do NOT dump vocabulary lists. Introduce ONE new phrase per turn, max.\n- If they say "breakdown" or ask how a word works, THEN go deep: pronunciation, meaning, kanji components, etymology.\n- Be proactive — ask them simple questions they can answer with words they just learned.\n- If they seem stuck, give them a phrase to repeat and use.\n- Reference Attack on Titan or Death Note when relevant.`
+    system: (u) => `You are Keita, a casual Japanese conversation partner.\n\nAbout the student:\n- Name: ${u.name}\n- Level: ${u.level}\n- The student is a BEGINNER. They will mostly speak in English or very broken Japanese.\n\nCore rules:\n- You must understand BOTH English and Japanese input. Always respond regardless of what language they speak.\n- Speak in simple Japanese. Keep it SHORT — 1 sentence max in Japanese per turn.\n- After your Japanese sentence, give a BRIEF English meaning (5-10 words max, not a full translation). Example: "元気？ ...that means 'how are you?'"\n- Do NOT repeat yourself. Say it once in Japanese, brief English hint, move on.\n- Teach whole PHRASES first, not individual words. Give them something they can USE immediately.\n- Teaching order: Sound first → Meaning → Usage in context → Kanji breakdown ONLY if they ask or say "breakdown"\n- Use casual speech (not keigo) to match anime dialogue.\n- Do NOT dump vocabulary lists. Introduce ONE new phrase per turn, max.\n- If they say "breakdown" or ask how a word works, THEN go deep: pronunciation, meaning, kanji components, etymology.\n- Be proactive — ask them simple questions they can answer with words they just learned.\n- If they seem stuck, give them a phrase to repeat and use.\n- Reference Attack on Titan or Death Note when relevant.\n- Naturally reuse vocabulary from previous conversations — don't announce reviews, just weave old words into new topics.`
   }
 };
 
@@ -2241,6 +2242,7 @@ async function startSession() {
   const url = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${settings.apiKey}`;
   ws = new WebSocket(url);
   transcripts = [];
+  sessionAudioChunks = [];
 
   ws.addEventListener('open', () => {
     ws.send(JSON.stringify({
@@ -2375,6 +2377,10 @@ async function startMic() {
       ws.send(JSON.stringify({
         realtimeInput: { mediaChunks: [{ mimeType: 'audio/pcm', data: arrayBufferToBase64(event.data.pcm) }] }
       }));
+      // Buffer audio for post-session pitch analysis (Japanese)
+      if (selectedLang === 'japanese') {
+        sessionAudioChunks.push(new Int16Array(event.data.pcm));
+      }
     }
   };
   source.connect(workletNode);
@@ -2518,8 +2524,89 @@ async function generateReview() {
     reviewMarkdown = data.candidates?.[0]?.content?.parts?.[0]?.text || 'No review generated.';
     autoDownloadReview(settings, lang);
     document.getElementById('reviewBody').innerHTML = markdownToHtml(reviewMarkdown);
+
+    // Pitch accent analysis for Japanese (uses buffered audio)
+    if (selectedLang === 'japanese' && sessionAudioChunks.length > 0) {
+      analyzePitchAccent(settings.apiKey, convoText);
+    }
   } catch (e) {
     document.getElementById('reviewBody').innerHTML = `<p>Review error: ${e.message}</p>`;
+  }
+}
+
+// ── Pitch Accent Analysis ──
+function buildWav(chunks, sampleRate = 16000) {
+  const totalSamples = chunks.reduce((n, c) => n + c.length, 0);
+  const buf = new ArrayBuffer(44 + totalSamples * 2);
+  const view = new DataView(buf);
+  const w = (off, s) => { for (let i = 0; i < s.length; i++) view.setUint8(off + i, s.charCodeAt(i)); };
+  w(0,'RIFF'); view.setUint32(4, 36 + totalSamples * 2, true);
+  w(8,'WAVE'); w(12,'fmt ');
+  view.setUint32(16,16,true); view.setUint16(20,1,true); view.setUint16(22,1,true);
+  view.setUint32(24,sampleRate,true); view.setUint32(28,sampleRate*2,true);
+  view.setUint16(32,2,true); view.setUint16(34,16,true);
+  w(36,'data'); view.setUint32(40, totalSamples * 2, true);
+  let offset = 44;
+  for (const chunk of chunks) {
+    for (let i = 0; i < chunk.length; i++) { view.setInt16(offset, chunk[i], true); offset += 2; }
+  }
+  return new Blob([buf], { type: 'audio/wav' });
+}
+
+async function blobToBase64(blob) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result.split(',')[1]);
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function analyzePitchAccent(apiKey, transcript) {
+  const reviewBody = document.getElementById('reviewBody');
+  reviewBody.innerHTML += '<hr><div style="color:var(--text2);font-family:var(--mono);font-size:12px;"><div class="loading-spinner"></div> Analyzing pitch accent...</div>';
+
+  try {
+    const wavBlob = buildWav(sessionAudioChunks);
+    const wavSize = wavBlob.size / 1024 / 1024;
+
+    // Only send audio if under 15MB (Gemini inline limit)
+    let parts = [{ text: `Analyze this Japanese learner's pitch accent from the conversation below.
+
+For each Japanese word the student attempted to say, provide:
+1. The word in kanji and hiragana
+2. The correct Tokyo Japanese pitch pattern using ○ (low) and ● (high) per mora
+3. Whether the student's pronunciation sounded correct based on the audio
+4. Brief note if incorrect
+
+Output as a markdown table:
+| Word | Reading | Correct Pattern | Rating | Note |
+
+Only include words the STUDENT said (not the tutor). Focus on the most important 5-10 words.
+
+Transcript:
+${transcript}` }];
+
+    if (wavSize < 15) {
+      const audioBase64 = await blobToBase64(wavBlob);
+      parts.unshift({ inlineData: { mimeType: 'audio/wav', data: audioBase64 } });
+    }
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+      { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts }] }) }
+    );
+
+    const data = await response.json();
+    if (data.error) {
+      reviewBody.innerHTML += `<p style="color:var(--red);">Pitch analysis error: ${data.error.message}</p>`;
+      return;
+    }
+
+    const pitchResult = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    reviewBody.innerHTML += `<h2>Pitch Accent Report</h2>${markdownToHtml(pitchResult)}`;
+  } catch (e) {
+    reviewBody.innerHTML += `<p style="color:var(--text3);">Pitch analysis unavailable: ${e.message}</p>`;
   }
 }
 
@@ -3380,7 +3467,8 @@ function updateCaseBoard() {
   const activeCases = [];
   const solvedCases = [];
 
-  // Build cases from language-specific common weak points
+  // TODO: Pull from watson-voice-context.json when connected to terminal pipeline
+  // Build cases from language-specific common weak points + actual session data
   const langFlags = { spanish: '&#127466;&#127480;', japanese: '&#127471;&#127477;', arabic: '&#127480;&#127462;', russian: '&#127479;&#127482;' };
   const commonWeakPoints = {
     spanish: ['ser vs estar', 'preterite endings', 'por vs para', 'subjunctive mood'],
@@ -3389,21 +3477,24 @@ function updateCaseBoard() {
     russian: ['case system', 'verb aspects', 'pronunciation'],
   };
 
-  for (const [lang, langRecords] of Object.entries(
-    records.reduce((acc, r) => { (acc[r.language] = acc[r.language] || []).push(r); return acc; }, {})
-  )) {
-    const sessions = langRecords.length;
-    const weakPoints = commonWeakPoints[lang] || [];
+  const sessionsByLang = records.reduce((acc, r) => { (acc[r.language] = acc[r.language] || []).push(r); return acc; }, {});
 
-    // First weak point gets "solved" after 10 sessions, second after 20, etc.
+  for (const [lang, langRecords] of Object.entries(sessionsByLang)) {
+    const sessions = langRecords.length;
+    if (sessions === 0) continue;
+
+    const weakPoints = commonWeakPoints[lang] || [];
+    const cheatWords = JSON.parse(localStorage.getItem('watson_cheat_' + lang) || '[]');
+    const firstSessionDate = new Date(langRecords[0]?.date || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const lastSessionDate = new Date(langRecords[langRecords.length - 1]?.date || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+    // First weak point gets "solved" after 8 sessions, second after 16, etc.
     weakPoints.forEach((wp, i) => {
       const threshold = (i + 1) * 8;
-      const firstSeen = new Date(langRecords[0]?.date || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
       if (sessions >= threshold) {
-        solvedCases.push({ name: wp, lang, flag: langFlags[lang], detail: `Closed after ${threshold} sessions` });
+        solvedCases.push({ name: wp, lang, flag: langFlags[lang], detail: `Closed after ${threshold} sessions (${cheatWords.length} words learned)` });
       } else {
-        const sightings = Math.min(sessions, threshold);
-        activeCases.push({ name: wp, lang, flag: langFlags[lang], detail: `Spotted ${sightings} times. First identified ${firstSeen}.`, progress: Math.round((sightings / threshold) * 100) });
+        activeCases.push({ name: wp, lang, flag: langFlags[lang], detail: `Seen across ${sessions} session${sessions !== 1 ? 's' : ''}. First identified ${firstSessionDate}. Last session ${lastSessionDate}.`, progress: Math.round((sessions / threshold) * 100) });
       }
     });
   }
