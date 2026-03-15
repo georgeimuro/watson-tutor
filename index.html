@@ -130,7 +130,6 @@
     .case-board.hidden { display: none !important; }
     .case-board-toggle { display: inline-block; }
     .setup-screen { margin-left: 280px; }
-    .session-screen { margin-left: 280px; }
   }
 
   .cb-header {
@@ -966,6 +965,8 @@
     color: #0e0c0a;
     animation: fadeUp 0.7s ease 0.35s both;
     box-shadow: 0 2px 12px rgba(200, 148, 62, 0.2);
+    position: relative;
+    z-index: 5;
   }
 
   .btn-primary:hover {
@@ -2258,7 +2259,6 @@ async function startSession() {
       }
     }));
     document.getElementById('statusDot').classList.add('connected');
-    document.getElementById('lampIcon').className = 'lamp-icon blazing';
     showSession();
     startTimer();
     startMic();
@@ -2471,6 +2471,8 @@ function stopTimer() {
 function showSession() {
   document.getElementById('setupScreen').style.display = 'none';
   document.getElementById('sessionScreen').classList.add('active');
+  // Hide case board during session and review for more space
+  document.getElementById('caseBoard').classList.add('hidden');
   lastSender = null; lastBubble = null;
   document.getElementById('transcript').innerHTML = '';
   // Load previously learned words for this language
@@ -2489,6 +2491,7 @@ async function endSession() {
   stopMic();
   if (ws) { ws.close(); ws = null; }
   clearPlayback();
+  reviewDownloaded = false;
 
   // Save session record for progress tracking
   saveSessionRecord(selectedLang, elapsed, LANGS[selectedLang].name);
@@ -3382,9 +3385,9 @@ function showElementaryEnding() {
   document.getElementById('progressScreen').classList.remove('active');
   document.getElementById('elementaryScreen').classList.add('active');
 
-  // Set lamp to blazing
-  const lampIcon = document.getElementById('lampIcon');
-  lampIcon.className = 'lamp-icon blazing';
+  // Set streak badge to blazing
+  const badge = document.getElementById('streakBadge');
+  if (badge) badge.className = 'streak-badge active blazing';
 
   const lines = [
     'When we began, every word was a mystery.',
