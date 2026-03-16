@@ -16,7 +16,7 @@
 <!-- Firebase SDK (modular, from CDN) -->
 <script type="module">
   import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js';
-  import { getAuth, signInWithPopup, signOut, GoogleAuthProvider, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js';
+  import { getAuth, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, GoogleAuthProvider, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js';
   import { getFirestore, doc, getDoc, setDoc } from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js';
 
   const firebaseConfig = {
@@ -46,6 +46,8 @@
       fbApp = initializeApp(firebaseConfig);
       fbAuth = getAuth(fbApp);
       fbDb = getFirestore(fbApp);
+      // Handle redirect result (mobile sign-in returns here)
+      getRedirectResult(fbAuth).catch(e => console.warn('Redirect result:', e));
       onAuthStateChanged(fbAuth, (user) => {
         fbUser = user;
         updateSyncUI();
@@ -157,10 +159,19 @@
   window.firebaseSignIn = async function() {
     if (!fbAuth) return;
     try {
-      await signInWithPopup(fbAuth, new GoogleAuthProvider());
+      // iOS standalone PWA blocks popups — use redirect instead
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches
+        || window.navigator.standalone === true;
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      if (isStandalone || isMobile) {
+        await signInWithRedirect(fbAuth, new GoogleAuthProvider());
+      } else {
+        await signInWithPopup(fbAuth, new GoogleAuthProvider());
+      }
     } catch (e) {
       if (e.code === 'auth/popup-blocked') {
-        alert('Popup blocked — please allow popups for this site.');
+        // Fallback to redirect
+        await signInWithRedirect(fbAuth, new GoogleAuthProvider());
       }
       console.warn('Sign-in failed:', e);
     }
@@ -2506,13 +2517,56 @@
     }
   }
 
-  /* Standalone PWA mode — ensure safe areas are respected */
+  /* Standalone PWA mode — ensure safe areas are respected
+     .pwa-standalone is set by JS for iOS (which ignores display-mode media query) */
+  .pwa-standalone .header {
+    padding-top: calc(14px + env(safe-area-inset-top, 47px));
+  }
+  .pwa-standalone .controls {
+    padding-bottom: calc(24px + env(safe-area-inset-bottom, 34px));
+  }
+  .pwa-standalone .cheat-sheet {
+    padding-top: calc(60px + env(safe-area-inset-top, 47px));
+  }
+  .pwa-standalone .cheat-sheet .cheat-close {
+    top: calc(16px + env(safe-area-inset-top, 47px));
+  }
+  .pwa-standalone .case-board {
+    top: calc(50px + env(safe-area-inset-top, 47px));
+  }
+  .pwa-standalone .srs-header,
+  .pwa-standalone .review-header,
+  .pwa-standalone .progress-header {
+    padding-top: calc(14px + env(safe-area-inset-top, 47px));
+  }
+  .pwa-standalone .modal-overlay {
+    padding-top: env(safe-area-inset-top, 47px);
+    padding-bottom: env(safe-area-inset-bottom, 34px);
+  }
+
   @media (display-mode: standalone) {
     .header {
-      padding-top: calc(14px + env(safe-area-inset-top, 0px));
+      /* env() fallback: 47px is Dynamic Island safe area on iPhone 14-16 */
+      padding-top: calc(14px + env(safe-area-inset-top, 47px));
     }
     .controls {
-      padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+      padding-bottom: calc(24px + env(safe-area-inset-bottom, 34px));
+    }
+    .cheat-sheet {
+      padding-top: calc(60px + env(safe-area-inset-top, 47px));
+    }
+    .cheat-sheet .cheat-close {
+      top: calc(16px + env(safe-area-inset-top, 47px));
+    }
+    .case-board {
+      top: calc(50px + env(safe-area-inset-top, 47px));
+    }
+    .srs-header, .review-header, .progress-header {
+      padding-top: calc(14px + env(safe-area-inset-top, 47px));
+    }
+    .modal-overlay {
+      padding-top: env(safe-area-inset-top, 47px);
+      padding-bottom: env(safe-area-inset-bottom, 34px);
     }
   }
 
@@ -5473,6 +5527,10 @@ function updateSrsHomeButton() {
 
 // ── Init ──
 (function init() {
+  // iOS standalone detection — Apple doesn't support @media (display-mode: standalone)
+  if (window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches) {
+    document.documentElement.classList.add('pwa-standalone');
+  }
   if (!getSettings().apiKey) setTimeout(openSettings, 500);
   checkReady();
   refreshHomeScreen();

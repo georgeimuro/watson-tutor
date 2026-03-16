@@ -1,5 +1,5 @@
 // Watson Tutor Service Worker — caches app shell, network-first for API calls
-const CACHE_NAME = 'watson-tutor-v2';
+const CACHE_NAME = 'watson-tutor-v3';
 const APP_SHELL = [
   './',
   './index.html',
