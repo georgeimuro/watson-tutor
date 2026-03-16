@@ -1,0 +1,18 @@
+{
+  "name": "Watson Tutor",
+  "short_name": "Watson",
+  "description": "AI Language Learning Voice Tutor",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#131110",
+  "theme_color": "#c8943e",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "bookworm.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any"
+    }
+  ]
+}
