@@ -2262,17 +2262,499 @@
   }
 
   /* ── Responsive ── */
-  @media (max-width: 480px) {
-    .setup-title h2 { font-size: 32px; }
-    .lang-grid { gap: 10px; }
-    .lang-card { padding: 18px 12px; }
-    .lang-card .flag { font-size: 26px; }
-    .controls { padding: 18px; gap: 20px; }
-    .mic-btn { width: 64px; height: 64px; font-size: 24px; }
-    .srs-card-word { font-size: 36px; }
-    .srs-card-meaning { font-size: 20px; }
-    .srs-rating-btns { gap: 6px; }
-    .srs-rating-btn { padding: 10px 16px; font-size: 11px; }
+
+  /* Safe area insets for iPhone notch / Dynamic Island */
+  @supports (padding-top: env(safe-area-inset-top)) {
+    .header {
+      padding-top: calc(14px + env(safe-area-inset-top));
+    }
+    .controls {
+      padding-bottom: calc(24px + env(safe-area-inset-bottom));
+    }
+    .modal-overlay {
+      padding-top: env(safe-area-inset-top);
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+  }
+
+  /* ── Tablet (max-width: 900px) ── */
+  /* Sidebar already hidden by default (only shows at min-width:900px) */
+  @media (max-width: 900px) {
+    .setup-screen {
+      margin-left: 0;
+    }
+
+    /* Paintings: reduce opacity so content is clearer */
+    .watson-portrait {
+      opacity: 0.3;
+    }
+    body::after {
+      opacity: 0.08;
+    }
+
+    /* Header: tighter padding */
+    .header {
+      padding: 12px 20px;
+    }
+
+    /* Progress stats: 2 columns on tablet */
+    .stats-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    /* Review body: slightly less padding */
+    .review-body {
+      padding: 24px 20px;
+    }
+
+    /* Progress body */
+    .progress-body {
+      padding: 20px;
+    }
+  }
+
+  /* ── Phone (max-width: 600px) ── */
+  @media (max-width: 600px) {
+    /* --- General mobile --- */
+
+    /* Touch targets: minimum 44px height (Apple HIG) */
+    .btn, .nav-btn, .settings-btn, .end-btn, .cheat-btn,
+    .srs-rating-btn, .srs-show-btn, .srs-home-btn,
+    .mode-btn, .case-board-toggle {
+      min-height: 44px;
+    }
+
+    /* Replace hover with active for touch */
+    .lang-card:hover {
+      transform: none;
+      box-shadow: none;
+      border-color: var(--border);
+    }
+    .lang-card:hover::after {
+      background: var(--border);
+    }
+    .lang-card:active {
+      border-color: var(--brass-dark);
+      transform: scale(0.97);
+    }
+    .lang-card:active::after {
+      background: var(--brass);
+    }
+
+    .btn-primary:hover {
+      transform: none;
+      box-shadow: 0 2px 12px rgba(200, 148, 62, 0.2);
+    }
+    .btn-primary:active {
+      transform: scale(0.97);
+    }
+
+    /* --- Header --- */
+    .header {
+      padding: 10px 16px;
+    }
+    .header-right {
+      gap: 8px;
+    }
+    .logo {
+      font-size: 22px;
+    }
+    .nav-btn {
+      padding: 7px 10px;
+      font-size: 10px;
+      letter-spacing: 1px;
+    }
+
+    /* --- Bookworm painting: hidden on mobile --- */
+    .watson-portrait {
+      display: none;
+    }
+
+    /* --- Reader background: hidden on mobile --- */
+    body::after {
+      display: none;
+    }
+
+    /* --- Setup / Home Screen --- */
+    .setup-screen {
+      margin-left: 0;
+      padding: 16px 16px;
+      padding-top: 20px;
+      gap: 12px;
+    }
+
+    .setup-title h2 {
+      font-size: 26px;
+    }
+    .setup-title.returning h2 {
+      font-size: 20px;
+    }
+    .setup-title p {
+      font-size: 13px;
+      max-width: 300px;
+    }
+
+    /* Language cards: 2x2 with tighter spacing */
+    .lang-grid {
+      gap: 8px;
+      max-width: 100%;
+    }
+    .lang-card {
+      padding: 12px 8px;
+    }
+    .lang-card .flag {
+      font-size: 24px;
+      margin-bottom: 8px;
+    }
+    .lang-card .name {
+      font-size: 15px;
+    }
+    .lang-card .tutor {
+      font-size: 11px;
+      margin-top: 4px;
+    }
+    .lang-card .rank-display {
+      font-size: 10px;
+    }
+    .lang-card .session-count {
+      font-size: 10px;
+    }
+
+    /* Watson observation box: full width, smaller text */
+    .watson-observation {
+      max-width: 100%;
+      padding: 14px 14px;
+    }
+    .watson-observation .obs-text {
+      font-size: 11px;
+    }
+    .watson-observation .obs-label {
+      font-size: 10px;
+    }
+
+    /* Next milestone: full width */
+    .next-milestone {
+      max-width: 100%;
+    }
+
+    /* Divider */
+    .divider {
+      max-width: 100%;
+    }
+
+    /* Begin Session button: full width */
+    .btn-primary {
+      width: 100%;
+      max-width: 100%;
+      padding: 14px 20px;
+    }
+
+    /* Mode toggle */
+    .mode-toggle {
+      width: 100%;
+    }
+    .mode-btn {
+      flex: 1;
+      padding: 10px 12px;
+      font-size: 11px;
+      letter-spacing: 1px;
+    }
+
+    /* SRS home button */
+    .srs-home-btn {
+      font-size: 11px;
+    }
+
+    /* --- Session Screen --- */
+
+    /* Transcript: full width, tighter padding */
+    .transcript {
+      padding: 16px 12px;
+    }
+    .msg {
+      max-width: 90%;
+      margin-bottom: 16px;
+    }
+    .msg .bubble {
+      padding: 10px 14px;
+      font-size: 13px;
+    }
+
+    /* Controls bar: smaller mic, tighter spacing */
+    .controls {
+      padding: 14px 12px;
+      gap: 16px;
+    }
+    .mic-btn {
+      width: 56px;
+      height: 56px;
+      font-size: 22px;
+    }
+    .mic-btn::before {
+      inset: -3px;
+    }
+    .end-btn, .cheat-btn {
+      width: 44px;
+      height: 44px;
+    }
+    .timer {
+      font-size: 13px;
+      min-width: 44px;
+    }
+
+    /* Mode switch: slightly smaller, keep bottom left */
+    .mode-switch {
+      bottom: 72px;
+      left: 10px;
+    }
+    .mode-switch-track {
+      width: 38px;
+      height: 22px;
+    }
+    .mode-switch-thumb {
+      width: 18px;
+      height: 18px;
+    }
+    .mode-switch.freeform .mode-switch-thumb {
+      transform: translateX(16px);
+    }
+    .mode-switch-label {
+      font-size: 10px;
+    }
+
+    /* Cheat sheet: full width overlay instead of side panel */
+    .cheat-sheet {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      width: 100%;
+      z-index: 50;
+      border-left: none;
+      background: rgba(19, 17, 16, 0.97);
+      padding: 60px 20px 20px;
+    }
+    .cheat-sheet h4 {
+      font-size: 18px;
+    }
+
+    /* --- Review Screen --- */
+    .review-header {
+      padding: 14px 16px;
+    }
+    .review-header h3 {
+      font-size: 18px;
+    }
+    .review-body {
+      padding: 20px 16px;
+      font-size: 13px;
+    }
+    .review-body h1 {
+      font-size: 20px;
+    }
+    .review-body h2 {
+      font-size: 17px;
+    }
+    .review-body h3 {
+      font-size: 15px;
+    }
+    .review-actions {
+      padding: 14px 16px;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .review-actions .btn {
+      flex: 1;
+      min-width: 120px;
+      padding: 12px 16px;
+      font-size: 12px;
+    }
+
+    /* --- SRS Review Screen --- */
+    .srs-header {
+      padding: 14px 16px;
+    }
+    .srs-header h3 {
+      font-size: 18px;
+    }
+    .srs-body {
+      padding: 16px 12px;
+    }
+    .srs-card {
+      max-width: 100%;
+      padding: 30px 20px;
+      min-height: 280px;
+    }
+    .srs-card-word {
+      font-size: 40px;
+    }
+    .srs-card-reading {
+      font-size: 17px;
+    }
+    .srs-card-meaning {
+      font-size: 20px;
+    }
+    .srs-card-context {
+      font-size: 12px;
+      max-width: 100%;
+    }
+    .srs-card-etymology {
+      font-size: 11px;
+      max-width: 100%;
+    }
+    .srs-card-mnemonic {
+      font-size: 12px;
+      max-width: 100%;
+    }
+    .srs-show-btn {
+      width: 100%;
+      padding: 14px 24px;
+    }
+    .srs-rating-btns {
+      gap: 6px;
+      width: 100%;
+    }
+    .srs-rating-btn {
+      padding: 10px 14px;
+      font-size: 11px;
+      flex: 1;
+      min-width: 70px;
+    }
+    .srs-stats-row {
+      gap: 16px;
+    }
+    .srs-stat-val {
+      font-size: 22px;
+    }
+    .srs-gap-analysis {
+      max-width: 100%;
+    }
+
+    /* --- Progress Dashboard --- */
+    .progress-header {
+      padding: 14px 16px;
+    }
+    .progress-header h3 {
+      font-size: 18px;
+    }
+    .progress-body {
+      padding: 16px;
+    }
+
+    /* Stats: stack vertically */
+    .stats-grid {
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+    .stat-card {
+      padding: 14px;
+    }
+    .stat-card .stat-value {
+      font-size: 28px;
+    }
+
+    /* CEFR bars */
+    .cefr-bar {
+      gap: 8px;
+    }
+    .cefr-bar .skill-name {
+      width: 70px;
+      font-size: 10px;
+    }
+
+    /* Session history items */
+    .history-item {
+      padding: 10px 12px;
+      font-size: 12px;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+
+    /* Streak calendar */
+    .streak-calendar {
+      max-width: 100%;
+    }
+
+    /* Evidence grid */
+    .evidence-grid {
+      grid-template-columns: 1fr;
+    }
+
+    /* Milestone rows */
+    .milestone-row {
+      padding: 10px 12px;
+      gap: 10px;
+    }
+
+    /* Journey nodes */
+    .journey-node {
+      padding: 10px 12px;
+      font-size: 12px;
+    }
+
+    /* --- Elementary Ending Screen --- */
+    .elementary-screen {
+      padding: 24px 16px;
+    }
+    .elementary-text {
+      font-size: 14px;
+      min-height: 200px;
+    }
+    .elementary-signature {
+      font-size: 17px;
+    }
+
+    /* --- Modal --- */
+    .modal {
+      padding: 24px 20px;
+      max-width: 100%;
+    }
+    .modal h3 {
+      font-size: 22px;
+    }
+    .modal .btn-row {
+      flex-direction: column;
+      gap: 8px;
+    }
+    .modal .btn-row .btn {
+      width: 100%;
+    }
+
+    /* Firelight: tone down on mobile */
+    .firelight {
+      display: none;
+    }
+  }
+
+  /* ── Small phone (max-width: 375px) ── */
+  @media (max-width: 375px) {
+    .setup-title h2 {
+      font-size: 22px;
+    }
+    .lang-card .name {
+      font-size: 14px;
+    }
+    .lang-card .flag {
+      font-size: 22px;
+    }
+    .srs-card-word {
+      font-size: 32px;
+    }
+    .srs-card-meaning {
+      font-size: 18px;
+    }
+    .mic-btn {
+      width: 52px;
+      height: 52px;
+      font-size: 20px;
+    }
+    .controls {
+      gap: 12px;
+    }
+    .logo {
+      font-size: 20px;
+    }
   }
 </style>
 </head>
