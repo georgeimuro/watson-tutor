@@ -13,6 +13,192 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,800;1,400;1,600&family=DM+Sans:wght@400;500;600&family=IBM+Plex+Mono:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
 <!-- Japanese annotation: kuroshiro runs in Web Worker with local dictionary -->
+<!-- Firebase SDK (modular, from CDN) -->
+<script type="module">
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js';
+  import { getAuth, signInWithPopup, signOut, GoogleAuthProvider, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js';
+  import { getFirestore, doc, getDoc, setDoc } from 'https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js';
+
+  const firebaseConfig = {
+    apiKey: "FIREBASE_API_KEY",
+    authDomain: "FIREBASE_AUTH_DOMAIN",
+    projectId: "FIREBASE_PROJECT_ID",
+    storageBucket: "FIREBASE_STORAGE_BUCKET",
+    messagingSenderId: "FIREBASE_MESSAGING_SENDER_ID",
+    appId: "FIREBASE_APP_ID"
+  };
+
+  let fbApp, fbAuth, fbDb, fbUser = null;
+  let syncTimeout = null;
+
+  // Keys to sync (API key excluded for security — stays local only)
+  const SYNC_KEYS = [
+    'watson_name', 'watson_level', 'watson_default_mode',
+    'watson_sessions', 'watson_srs_cards', 'watson_learning_profile',
+  ];
+  const SYNC_PATTERNS = [
+    'watson_mode_', 'watson_cheat_', 'watson_srs_gap_', 'watson_elementary_shown_'
+  ];
+
+  function initFirebase() {
+    if (firebaseConfig.apiKey === 'FIREBASE_API_KEY') return; // Not configured yet
+    try {
+      fbApp = initializeApp(firebaseConfig);
+      fbAuth = getAuth(fbApp);
+      fbDb = getFirestore(fbApp);
+      onAuthStateChanged(fbAuth, (user) => {
+        fbUser = user;
+        updateSyncUI();
+        if (user) pullFromFirebase();
+      });
+    } catch (e) { console.warn('Firebase init failed:', e); }
+  }
+
+  function getAllSyncData() {
+    const data = {};
+    for (const key of SYNC_KEYS) {
+      const val = localStorage.getItem(key);
+      if (val) data[key] = val;
+    }
+    // Dynamic keys (per-language)
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (SYNC_PATTERNS.some(p => key.startsWith(p))) {
+        data[key] = localStorage.getItem(key);
+      }
+    }
+    data._updatedAt = Date.now();
+    return data;
+  }
+
+  async function pushToFirebase() {
+    if (!fbUser || !fbDb) return;
+    try {
+      await setDoc(doc(fbDb, 'users', fbUser.uid), getAllSyncData(), { merge: true });
+      console.log('Synced to Firebase');
+    } catch (e) { console.warn('Firebase push failed:', e); }
+  }
+
+  async function pullFromFirebase() {
+    if (!fbUser || !fbDb) return;
+    try {
+      const snap = await getDoc(doc(fbDb, 'users', fbUser.uid));
+      if (!snap.exists()) { pushToFirebase(); return; } // First sync — push local data up
+      const remote = snap.data();
+      const localUpdated = parseInt(localStorage.getItem('watson_sync_ts') || '0');
+      const remoteUpdated = remote._updatedAt || 0;
+
+      // Merge strategy: for each key, use remote if remote is newer, keep local otherwise
+      if (remoteUpdated > localUpdated) {
+        for (const [key, val] of Object.entries(remote)) {
+          if (key.startsWith('_')) continue;
+          // Merge SRS cards by word (union, keep newer review)
+          if (key === 'watson_srs_cards') {
+            mergeSrsCards(val);
+            continue;
+          }
+          // Merge sessions (union by timestamp)
+          if (key === 'watson_sessions') {
+            mergeSessions(val);
+            continue;
+          }
+          localStorage.setItem(key, val);
+        }
+        localStorage.setItem('watson_sync_ts', String(remoteUpdated));
+        // Refresh the UI with synced data
+        if (window.refreshHomeScreen) window.refreshHomeScreen();
+        if (window.checkReady) window.checkReady();
+        console.log('Pulled from Firebase');
+      }
+    } catch (e) { console.warn('Firebase pull failed:', e); }
+  }
+
+  function mergeSrsCards(remoteStr) {
+    try {
+      const remote = JSON.parse(remoteStr || '[]');
+      const local = JSON.parse(localStorage.getItem('watson_srs_cards') || '[]');
+      const merged = new Map();
+      // Index by word+lang for deduplication
+      for (const card of local) merged.set(card.word + '|' + (card.lang || ''), card);
+      for (const card of remote) {
+        const key = card.word + '|' + (card.lang || '');
+        const existing = merged.get(key);
+        if (!existing || (card.lastReview || 0) > (existing.lastReview || 0)) {
+          merged.set(key, card);
+        }
+      }
+      localStorage.setItem('watson_srs_cards', JSON.stringify([...merged.values()]));
+    } catch (e) {}
+  }
+
+  function mergeSessions(remoteStr) {
+    try {
+      const remote = JSON.parse(remoteStr || '[]');
+      const local = JSON.parse(localStorage.getItem('watson_sessions') || '[]');
+      const seen = new Set(local.map(s => s.date + '|' + (s.lang || '')));
+      for (const s of remote) {
+        if (!seen.has(s.date + '|' + (s.lang || ''))) local.push(s);
+      }
+      local.sort((a, b) => new Date(b.date) - new Date(a.date));
+      localStorage.setItem('watson_sessions', JSON.stringify(local));
+    } catch (e) {}
+  }
+
+  // Debounced sync — call after any data change
+  window.syncToFirebase = function() {
+    if (!fbUser) return;
+    clearTimeout(syncTimeout);
+    syncTimeout = setTimeout(() => {
+      localStorage.setItem('watson_sync_ts', String(Date.now()));
+      pushToFirebase();
+    }, 2000); // Wait 2s after last change before syncing
+  };
+
+  window.firebaseSignIn = async function() {
+    if (!fbAuth) return;
+    try {
+      await signInWithPopup(fbAuth, new GoogleAuthProvider());
+    } catch (e) {
+      if (e.code === 'auth/popup-blocked') {
+        alert('Popup blocked — please allow popups for this site.');
+      }
+      console.warn('Sign-in failed:', e);
+    }
+  };
+
+  window.firebaseSignOut = async function() {
+    if (!fbAuth) return;
+    try {
+      await signOut(fbAuth);
+      fbUser = null;
+      updateSyncUI();
+    } catch (e) { console.warn('Sign-out failed:', e); }
+  };
+
+  function updateSyncUI() {
+    const btn = document.getElementById('syncBtn');
+    const status = document.getElementById('syncStatus');
+    if (!btn || !status) return;
+    if (fbUser) {
+      btn.textContent = 'Sign Out';
+      btn.onclick = window.firebaseSignOut;
+      status.textContent = 'Synced as ' + (fbUser.displayName || fbUser.email);
+      status.style.color = 'var(--green)';
+    } else {
+      btn.textContent = 'Sign in with Google';
+      btn.onclick = window.firebaseSignIn;
+      status.textContent = 'Not synced — data is local only';
+      status.style.color = 'var(--text3)';
+    }
+  }
+
+  window.isFbConfigured = function() {
+    return firebaseConfig.apiKey !== 'FIREBASE_API_KEY';
+  };
+
+  // Initialize on load
+  initFirebase();
+</script>
 <style>
   :root {
     --bg: #131110;
@@ -3030,6 +3216,12 @@
       <option value="guided">Guided (tutor steers toward weak points)</option>
       <option value="freeform">Freeform (you lead the conversation)</option>
     </select>
+    <!-- Cloud Sync -->
+    <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
+      <label>Cloud Sync</label>
+      <p id="syncStatus" class="help-text" style="margin-bottom:8px;">Not synced — data is local only</p>
+      <button class="btn btn-secondary" id="syncBtn" onclick="firebaseSignIn()" style="width:100%;margin-bottom:8px;">Sign in with Google</button>
+    </div>
     <div class="btn-row">
       <button class="btn btn-secondary" onclick="closeSettings()">Cancel</button>
       <button class="btn btn-primary" onclick="saveSettings()">Save</button>
@@ -3187,6 +3379,7 @@ function saveSettings() {
   localStorage.setItem('watson_level', level);
   closeSettings();
   checkReady();
+  if (window.syncToFirebase) syncToFirebase();
 }
 function checkReady() {
   const s = getSettings();
@@ -3764,6 +3957,7 @@ function saveSessionRecord(lang, duration, tutorName) {
     duration_seconds: duration,
   });
   localStorage.setItem('watson_sessions', JSON.stringify(records));
+  if (window.syncToFirebase) syncToFirebase();
 }
 
 function getSessionStats() {
@@ -4684,6 +4878,7 @@ function getSrsCards() {
 
 function saveSrsCards(cards) {
   localStorage.setItem(SRS_KEY, JSON.stringify(cards));
+  if (window.syncToFirebase) syncToFirebase();
 }
 
 function getDueCards() {
@@ -4799,6 +4994,7 @@ function getLearningProfile() {
 
 function saveLearningProfile(profile) {
   localStorage.setItem('watson_learning_profile', JSON.stringify(profile));
+  if (window.syncToFirebase) syncToFirebase();
 }
 
 function getLangProfile(lang) {
