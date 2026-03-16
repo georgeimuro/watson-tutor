@@ -187,21 +187,29 @@
   };
 
   function updateSyncUI() {
+    // DOM may not be ready yet — retry until elements exist
     const btn = document.getElementById('syncBtn');
     const status = document.getElementById('syncStatus');
-    if (!btn || !status) return;
+    if (!btn || !status) {
+      if (document.readyState !== 'complete') {
+        window.addEventListener('load', updateSyncUI, { once: true });
+      }
+      return;
+    }
     if (fbUser) {
       btn.textContent = 'Sign Out';
       btn.onclick = window.firebaseSignOut;
-      status.textContent = 'Synced as ' + (fbUser.displayName || fbUser.email);
-      status.style.color = 'var(--green)';
+      const name = fbUser.displayName || fbUser.email || 'Google account';
+      status.innerHTML = '<span style="color:var(--green);">&#10003; Synced as ' + name + '</span>';
     } else {
       btn.textContent = 'Sign in with Google';
       btn.onclick = window.firebaseSignIn;
-      status.textContent = 'Not synced — data is local only';
-      status.style.color = 'var(--text3)';
+      status.innerHTML = 'Not synced — data is local only';
     }
   }
+
+  // Also expose for settings modal open (refresh state each time it opens)
+  window.updateSyncUI = updateSyncUI;
 
   window.isFbConfigured = function() {
     return firebaseConfig.apiKey !== 'FIREBASE_API_KEY';
@@ -3419,6 +3427,7 @@ function openSettings() {
   document.getElementById('levelInput').value = s.level;
   document.getElementById('modeInput').value = localStorage.getItem('watson_default_mode') || 'guided';
   document.getElementById('settingsModal').classList.add('active');
+  if (window.updateSyncUI) window.updateSyncUI();
 }
 function closeSettings() { document.getElementById('settingsModal').classList.remove('active'); }
 function saveSettings() {
