@@ -1,0 +1,42 @@
+#!/bin/bash
+source ~/.zprofile 2>/dev/null
+source ~/.zshrc 2>/dev/null
+export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
+DIR="$(cd "$(dirname "$0")/../Resources" && pwd)"
+
+# Fresh temp profile every launch
+PROFILE="/tmp/watson-app-$$"
+rm -rf /tmp/watson-app-* 2>/dev/null
+
+# Kill any existing server on 8787
+lsof -ti:8787 | xargs kill 2>/dev/null
+
+# Start server
+cd "$DIR"
+/opt/homebrew/bin/python3 -m http.server 8787 > /tmp/watson-server.log 2>&1 &
+SERVER_PID=$!
+
+# Wait until server responds
+for i in {1..30}; do
+  curl -s http://localhost:8787 >/dev/null 2>&1 && break
+  sleep 0.3
+done
+
+# Kill any lingering Watson Chrome instances (not regular Chrome)
+pkill -f "watson-app-" 2>/dev/null
+
+# Open as its own Chrome instance
+"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
+  --app="http://localhost:8787" \
+  --user-data-dir="$PROFILE" \
+  --no-first-run \
+  --no-default-browser-check \
+  --disable-session-crashed-bubble \
+  --disable-restore-session-state \
+  --disable-background-networking \
+  --window-size=1400,850 \
+  2>/dev/null
+
+# Cleanup
+kill $SERVER_PID 2>/dev/null
+rm -rf "$PROFILE" 2>/dev/null

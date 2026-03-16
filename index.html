@@ -1872,6 +1872,334 @@
 
   .elementary-btn.visible { opacity: 1; }
 
+  /* ── SRS Review Screen ── */
+  .srs-screen {
+    flex: 1;
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .srs-screen.active { display: flex; }
+
+  .srs-header {
+    padding: 20px 28px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--surface);
+  }
+  .srs-header h3 {
+    font-family: var(--heading);
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--cream);
+    font-style: italic;
+  }
+  .srs-progress-text {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text2);
+    letter-spacing: 1px;
+  }
+
+  .srs-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 28px;
+    overflow-y: auto;
+  }
+
+  .srs-card {
+    width: 100%;
+    max-width: 520px;
+    background: var(--parchment);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 40px 32px;
+    text-align: center;
+    position: relative;
+    min-height: 280px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+  .srs-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    opacity: 0.02;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.2' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    pointer-events: none;
+    border-radius: 6px;
+  }
+  .srs-card::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: var(--amber);
+    border-radius: 6px 6px 0 0;
+  }
+
+  .srs-card-lang {
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--text3);
+    margin-bottom: 16px;
+  }
+
+  .srs-card-word {
+    font-family: var(--heading);
+    font-size: 48px;
+    font-weight: 700;
+    color: var(--cream);
+    line-height: 1.2;
+    margin-bottom: 8px;
+  }
+  .srs-card-reading {
+    font-family: var(--body);
+    font-size: 20px;
+    color: var(--text2);
+    margin-bottom: 4px;
+  }
+  .srs-card-romaji {
+    font-family: var(--mono);
+    font-size: 14px;
+    color: var(--text3);
+    margin-bottom: 16px;
+  }
+
+  .srs-card-divider {
+    width: 60px;
+    height: 1px;
+    background: var(--border);
+    margin: 16px auto;
+  }
+
+  .srs-card-meaning {
+    font-family: var(--body);
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--amber);
+    margin-bottom: 12px;
+  }
+  .srs-card-context {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--text2);
+    line-height: 1.6;
+    font-style: italic;
+    max-width: 400px;
+    margin-bottom: 12px;
+  }
+  .srs-card-etymology {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text3);
+    line-height: 1.5;
+    max-width: 400px;
+    margin-bottom: 8px;
+  }
+  .srs-card-mnemonic {
+    font-family: var(--body);
+    font-size: 13px;
+    color: var(--brass);
+    line-height: 1.5;
+    max-width: 400px;
+    font-style: italic;
+  }
+
+  .srs-show-btn {
+    margin-top: 24px;
+    padding: 14px 48px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--cream);
+    font-family: var(--body);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.25s;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .srs-show-btn:hover {
+    border-color: var(--amber);
+    color: var(--amber);
+  }
+
+  .srs-rating-btns {
+    display: flex;
+    gap: 10px;
+    margin-top: 24px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .srs-rating-btn {
+    padding: 12px 24px;
+    border: 1px solid;
+    border-radius: 4px;
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.25s;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    background: var(--surface2);
+  }
+  .srs-rating-btn.forgot {
+    border-color: var(--red);
+    color: var(--red);
+  }
+  .srs-rating-btn.forgot:hover {
+    background: var(--red);
+    color: var(--bg);
+  }
+  .srs-rating-btn.hard {
+    border-color: #c87a3e;
+    color: #c87a3e;
+  }
+  .srs-rating-btn.hard:hover {
+    background: #c87a3e;
+    color: var(--bg);
+  }
+  .srs-rating-btn.good {
+    border-color: var(--amber);
+    color: var(--amber);
+  }
+  .srs-rating-btn.good:hover {
+    background: var(--amber);
+    color: var(--bg);
+  }
+  .srs-rating-btn.easy {
+    border-color: var(--green);
+    color: var(--green);
+  }
+  .srs-rating-btn.easy:hover {
+    background: var(--green);
+    color: var(--bg);
+  }
+  .srs-rating-btn .rating-days {
+    display: block;
+    font-size: 10px;
+    font-weight: 400;
+    opacity: 0.7;
+    margin-top: 2px;
+  }
+
+  .srs-done {
+    text-align: center;
+    max-width: 400px;
+  }
+  .srs-done-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+  }
+  .srs-done h4 {
+    font-family: var(--heading);
+    font-size: 24px;
+    color: var(--cream);
+    font-style: italic;
+    margin-bottom: 12px;
+  }
+  .srs-done p {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--text2);
+    line-height: 1.6;
+    margin-bottom: 8px;
+  }
+  .srs-stats-row {
+    display: flex;
+    gap: 24px;
+    justify-content: center;
+    margin-top: 20px;
+    margin-bottom: 24px;
+  }
+  .srs-stat {
+    text-align: center;
+  }
+  .srs-stat-val {
+    font-family: var(--heading);
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--amber);
+  }
+  .srs-stat-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text3);
+    margin-top: 4px;
+  }
+
+  .srs-gap-analysis {
+    margin-top: 16px;
+    padding: 16px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    text-align: left;
+    max-width: 480px;
+    width: 100%;
+  }
+  .srs-gap-analysis h5 {
+    font-family: var(--heading);
+    font-size: 14px;
+    color: var(--cream);
+    font-style: italic;
+    margin-bottom: 8px;
+  }
+  .srs-gap-analysis p {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text2);
+    line-height: 1.6;
+  }
+
+  /* Review button on home screen */
+  .srs-home-btn {
+    padding: 10px 28px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text2);
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.25s;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    animation: fadeUp 0.7s ease 0.3s both;
+    position: relative;
+    z-index: 5;
+  }
+  .srs-home-btn:hover {
+    border-color: var(--amber);
+    color: var(--amber);
+  }
+  .srs-due-count {
+    display: inline-block;
+    background: var(--amber);
+    color: var(--bg);
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 10px;
+    margin-left: 6px;
+  }
+
   /* ── Responsive ── */
   @media (max-width: 480px) {
     .setup-title h2 { font-size: 32px; }
@@ -1880,6 +2208,10 @@
     .lang-card .flag { font-size: 26px; }
     .controls { padding: 18px; gap: 20px; }
     .mic-btn { width: 64px; height: 64px; font-size: 24px; }
+    .srs-card-word { font-size: 36px; }
+    .srs-card-meaning { font-size: 20px; }
+    .srs-rating-btns { gap: 6px; }
+    .srs-rating-btn { padding: 10px 16px; font-size: 11px; }
   }
 </style>
 </head>
@@ -1965,6 +2297,9 @@
   <button class="btn btn-primary" id="startBtn" onclick="startSession()" disabled>
     Begin Session
   </button>
+  <button class="srs-home-btn" id="srsHomeBtn" onclick="showSrsReview()" style="display:none;">
+    Review Cards <span class="srs-due-count" id="srsDueCount"></span>
+  </button>
 </div>
 
 <!-- Session Screen -->
@@ -2006,6 +2341,16 @@
   </div>
   <div class="progress-body" id="progressBody">
     <div class="empty-state">No sessions yet. Start a conversation to track your progress.</div>
+  </div>
+</div>
+
+<!-- SRS Review Cards Screen -->
+<div class="srs-screen" id="reviewCardsScreen">
+  <div class="srs-header">
+    <h3>Card Review</h3>
+    <div class="srs-progress-text" id="srsProgress"></div>
+  </div>
+  <div class="srs-body" id="srsBody">
   </div>
 </div>
 
@@ -2528,6 +2873,17 @@ async function generateReview() {
     autoDownloadReview(settings, lang);
     document.getElementById('reviewBody').innerHTML = markdownToHtml(reviewMarkdown);
 
+    // Generate SRS cards from session vocabulary
+    const newSrsCards = generateSrsCardsFromSession(selectedLang);
+    if (newSrsCards.length > 0) {
+      // Enrich in the background (don't block the review)
+      enrichSrsCards(newSrsCards, reviewMarkdown, selectedLang).catch(e => console.warn('SRS enrichment:', e));
+      const cardNote = document.createElement('div');
+      cardNote.style.cssText = 'margin-top:16px;padding:12px 16px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;font-family:var(--mono);font-size:12px;color:var(--text2);';
+      cardNote.innerHTML = `&#128218; ${newSrsCards.length} new card${newSrsCards.length !== 1 ? 's' : ''} added to your review deck.`;
+      document.getElementById('reviewBody').appendChild(cardNote);
+    }
+
     // Pitch accent analysis for Japanese (uses buffered audio)
     if (selectedLang === 'japanese' && sessionAudioChunks.length > 0) {
       analyzePitchAccent(settings.apiKey, convoText);
@@ -2674,6 +3030,7 @@ function goHome() {
   document.getElementById('reviewScreen').classList.remove('active');
   document.getElementById('progressScreen').classList.remove('active');
   document.getElementById('elementaryScreen').classList.remove('active');
+  document.getElementById('reviewCardsScreen').classList.remove('active');
   document.getElementById('setupScreen').style.display = '';
   // Restore case board on wide screens
   document.getElementById('caseBoard').classList.remove('hidden');
@@ -2734,6 +3091,7 @@ function showProgress() {
   document.getElementById('setupScreen').style.display = 'none';
   document.getElementById('sessionScreen').classList.remove('active');
   document.getElementById('reviewScreen').classList.remove('active');
+  document.getElementById('reviewCardsScreen').classList.remove('active');
   document.getElementById('progressScreen').classList.add('active');
   document.getElementById('caseBoard').classList.add('hidden');
   renderProgress();
@@ -3383,6 +3741,7 @@ function showElementaryEnding() {
   document.getElementById('sessionScreen').classList.remove('active');
   document.getElementById('reviewScreen').classList.remove('active');
   document.getElementById('progressScreen').classList.remove('active');
+  document.getElementById('reviewCardsScreen').classList.remove('active');
   document.getElementById('elementaryScreen').classList.add('active');
 
   // Set streak badge to blazing
@@ -3450,6 +3809,7 @@ function refreshHomeScreen() {
   updateTitleForReturning();
   updateLantern();
   updateCaseBoard();
+  updateSrsHomeButton();
 }
 
 function updateCaseBoard() {
@@ -3579,6 +3939,363 @@ function updateTitleForReturning() {
 
 function updateLantern() {
   // Now handled by updateGaslightLamp via the streak badge in the header
+}
+
+// ══════════════════════════════════════════════════════════
+// ── FSRS Spaced Repetition System ──
+// ══════════════════════════════════════════════════════════
+
+const SRS_KEY = 'watson_srs_cards';
+
+function getSrsCards() {
+  return JSON.parse(localStorage.getItem(SRS_KEY) || '[]');
+}
+
+function saveSrsCards(cards) {
+  localStorage.setItem(SRS_KEY, JSON.stringify(cards));
+}
+
+function getDueCards() {
+  const cards = getSrsCards();
+  const now = new Date().toISOString().slice(0, 10);
+  return cards.filter(c => !c.due || c.due <= now);
+}
+
+// FSRS simplified scheduler
+function scheduleSrsCard(card, rating) {
+  // rating: 1=forgot, 2=hard, 3=good, 4=easy
+  const now = new Date();
+  const multipliers = { 1: 0.2, 2: 1.2, 3: 2.5, 4: 3.5 };
+  const mult = multipliers[rating] || 1;
+
+  const oldStability = card.stability || 1;
+  let newStability = Math.max(0.5, oldStability * mult);
+
+  // Clamp stability to reasonable range
+  if (rating === 1) newStability = Math.max(0.5, Math.min(newStability, 1));
+
+  // Adjust difficulty
+  let diff = card.difficulty || 5;
+  if (rating === 1) { diff = Math.min(10, diff + 1); }
+  else if (rating === 2) { diff = Math.min(10, diff + 0.3); }
+  else if (rating === 3) { /* no change */ }
+  else if (rating === 4) { diff = Math.max(1, diff - 0.5); }
+
+  // Calculate next due date
+  const intervalDays = Math.max(1, Math.round(newStability));
+  const dueDate = new Date(now);
+  dueDate.setDate(dueDate.getDate() + intervalDays);
+
+  card.stability = Math.round(newStability * 100) / 100;
+  card.difficulty = Math.round(diff * 100) / 100;
+  card.due = dueDate.toISOString().slice(0, 10);
+  card.reps = (card.reps || 0) + 1;
+  card.lastReview = now.toISOString();
+  if (rating === 1) card.lapses = (card.lapses || 0) + 1;
+
+  return card;
+}
+
+// Generate SRS cards from cheat sheet words after session
+function generateSrsCardsFromSession(lang) {
+  const cheatWords = JSON.parse(localStorage.getItem('watson_cheat_' + lang) || '[]');
+  if (cheatWords.length === 0) return [];
+
+  const cards = getSrsCards();
+  const existingWords = new Set(cards.map(c => c.word + '|' + c.lang));
+  const today = new Date().toISOString().slice(0, 10);
+  const newCards = [];
+
+  for (const w of cheatWords) {
+    const key = w.term + '|' + lang;
+    if (existingWords.has(key)) continue;
+
+    const card = {
+      word: w.term,
+      meaning: w.meaning || '',
+      reading: w.reading || '',
+      romaji: w.romaji || '',
+      context: '',
+      lang: lang,
+      stability: 1,
+      difficulty: 5,
+      due: today,
+      reps: 0,
+      lapses: 0,
+      lastReview: null,
+      source: 'session',
+      etymology: '',
+      mnemonic: '',
+      created: new Date().toISOString(),
+    };
+    newCards.push(card);
+    cards.push(card);
+    existingWords.add(key);
+  }
+
+  if (newCards.length > 0) {
+    saveSrsCards(cards);
+  }
+  return newCards;
+}
+
+// Enrichment via Gemini Flash (etymology, mnemonics, gap analysis)
+async function enrichSrsCards(newCards, reviewText, lang) {
+  if (newCards.length === 0) return;
+  const settings = getSettings();
+  if (!settings.apiKey) return;
+
+  const wordList = newCards.map(c => `${c.word} (${c.meaning})`).join('\n');
+  const enrichPrompt = `You are a language learning expert. For these ${lang} vocabulary words, provide enrichment data.
+
+Words:
+${wordList}
+
+${reviewText ? 'Session review context:\n' + reviewText.slice(0, 2000) : ''}
+
+Return a JSON object with:
+1. "cards": an array (same order as input) where each item has:
+   - "etymology": origin/root breakdown (1-2 sentences), connect to English/Latin/Greek cognates where possible
+   - "mnemonic": a vivid, memorable association (dark humor or violent imagery welcome — the more memorable the better)
+   - "context": an example sentence in ${lang} using the word naturally
+2. "gap_analysis": based on the session review, what patterns is the student struggling with and WHY (2-3 sentences)
+
+Return ONLY valid JSON, no markdown.`;
+
+  try {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${settings.apiKey}`,
+      { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: enrichPrompt }] }],
+          generationConfig: { responseMimeType: 'application/json' }
+        })
+      }
+    );
+    const data = await response.json();
+    if (data.error) { console.warn('SRS enrichment error:', data.error.message); return; }
+
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    let enrichment;
+    try {
+      enrichment = JSON.parse(text);
+    } catch (e) {
+      // Try to extract JSON from potential markdown wrapping
+      const match = text.match(/\{[\s\S]*\}/);
+      if (match) enrichment = JSON.parse(match[0]);
+      else { console.warn('SRS enrichment: could not parse JSON'); return; }
+    }
+
+    if (enrichment.cards && Array.isArray(enrichment.cards)) {
+      const allCards = getSrsCards();
+      for (let i = 0; i < newCards.length && i < enrichment.cards.length; i++) {
+        const e = enrichment.cards[i];
+        // Find matching card in full deck
+        const idx = allCards.findIndex(c => c.word === newCards[i].word && c.lang === newCards[i].lang);
+        if (idx !== -1) {
+          allCards[idx].etymology = e.etymology || '';
+          allCards[idx].mnemonic = e.mnemonic || '';
+          if (e.context) allCards[idx].context = e.context;
+          allCards[idx].source = 'enriched';
+        }
+      }
+      // Store gap analysis
+      if (enrichment.gap_analysis) {
+        localStorage.setItem('watson_srs_gap_' + lang, enrichment.gap_analysis);
+      }
+      saveSrsCards(allCards);
+    }
+  } catch (e) {
+    console.warn('SRS enrichment failed:', e.message);
+  }
+}
+
+// ── SRS Review UI ──
+
+let srsReviewQueue = [];
+let srsReviewIdx = 0;
+let srsSessionStats = { reviewed: 0, forgot: 0, hard: 0, good: 0, easy: 0 };
+
+function showSrsReview() {
+  const due = getDueCards();
+  if (due.length === 0) return;
+
+  srsReviewQueue = due.sort(() => Math.random() - 0.5); // shuffle
+  srsReviewIdx = 0;
+  srsSessionStats = { reviewed: 0, forgot: 0, hard: 0, good: 0, easy: 0 };
+
+  document.getElementById('setupScreen').style.display = 'none';
+  document.getElementById('sessionScreen').classList.remove('active');
+  document.getElementById('reviewScreen').classList.remove('active');
+  document.getElementById('progressScreen').classList.remove('active');
+  document.getElementById('reviewCardsScreen').classList.add('active');
+  document.getElementById('caseBoard').classList.add('hidden');
+
+  renderSrsCard();
+}
+
+function renderSrsCard() {
+  const body = document.getElementById('srsBody');
+  const progressEl = document.getElementById('srsProgress');
+
+  if (srsReviewIdx >= srsReviewQueue.length) {
+    // Done!
+    renderSrsDone();
+    return;
+  }
+
+  const card = srsReviewQueue[srsReviewIdx];
+  const remaining = srsReviewQueue.length - srsReviewIdx;
+  progressEl.textContent = `${srsReviewIdx + 1} / ${srsReviewQueue.length}`;
+
+  // Calculate what the intervals would be for each rating
+  const intervals = {};
+  for (const [rating, mult] of [[1, 0.2], [2, 1.2], [3, 2.5], [4, 3.5]]) {
+    const newStab = Math.max(0.5, (card.stability || 1) * mult);
+    intervals[rating] = Math.max(1, Math.round(rating === 1 ? Math.min(newStab, 1) : newStab));
+  }
+
+  const langNames = { spanish: 'Spanish', japanese: 'Japanese', arabic: 'Arabic', russian: 'Russian' };
+  const langLabel = langNames[card.lang] || card.lang;
+
+  // Front of card
+  body.innerHTML = `
+    <div class="srs-card" id="srsCardInner">
+      <div class="srs-card-lang">${langLabel}</div>
+      <div class="srs-card-word">${card.word}</div>
+      ${card.reading ? `<div class="srs-card-reading">${card.reading}</div>` : ''}
+      ${card.romaji ? `<div class="srs-card-romaji">${card.romaji}</div>` : ''}
+      <div id="srsCardBack" style="display:none;">
+        <div class="srs-card-divider"></div>
+        <div class="srs-card-meaning">${escapeHtml(card.meaning)}</div>
+        ${card.context ? `<div class="srs-card-context">"${escapeHtml(card.context)}"</div>` : ''}
+        ${card.etymology ? `<div class="srs-card-etymology">Etymology: ${escapeHtml(card.etymology)}</div>` : ''}
+        ${card.mnemonic ? `<div class="srs-card-mnemonic">Mnemonic: ${escapeHtml(card.mnemonic)}</div>` : ''}
+      </div>
+      <button class="srs-show-btn" id="srsShowBtn" onclick="srsShowAnswer()">Show Answer</button>
+      <div class="srs-rating-btns" id="srsRatingBtns" style="display:none;">
+        <button class="srs-rating-btn forgot" onclick="srsRate(1)">Forgot<span class="rating-days">${formatInterval(intervals[1])}</span></button>
+        <button class="srs-rating-btn hard" onclick="srsRate(2)">Hard<span class="rating-days">${formatInterval(intervals[2])}</span></button>
+        <button class="srs-rating-btn good" onclick="srsRate(3)">Good<span class="rating-days">${formatInterval(intervals[3])}</span></button>
+        <button class="srs-rating-btn easy" onclick="srsRate(4)">Elementary<span class="rating-days">${formatInterval(intervals[4])}</span></button>
+      </div>
+    </div>
+  `;
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function formatInterval(days) {
+  if (days === 1) return '1d';
+  if (days < 30) return days + 'd';
+  if (days < 365) return Math.round(days / 30) + 'mo';
+  return Math.round(days / 365 * 10) / 10 + 'y';
+}
+
+function srsShowAnswer() {
+  document.getElementById('srsCardBack').style.display = '';
+  document.getElementById('srsShowBtn').style.display = 'none';
+  document.getElementById('srsRatingBtns').style.display = '';
+}
+
+function srsRate(rating) {
+  const card = srsReviewQueue[srsReviewIdx];
+  const ratingNames = { 1: 'forgot', 2: 'hard', 3: 'good', 4: 'easy' };
+  srsSessionStats[ratingNames[rating]]++;
+  srsSessionStats.reviewed++;
+
+  // Apply FSRS scheduling
+  scheduleSrsCard(card, rating);
+
+  // Save to storage
+  const allCards = getSrsCards();
+  const idx = allCards.findIndex(c => c.word === card.word && c.lang === card.lang);
+  if (idx !== -1) {
+    allCards[idx] = card;
+  }
+  saveSrsCards(allCards);
+
+  // Next card
+  srsReviewIdx++;
+  renderSrsCard();
+}
+
+function renderSrsDone() {
+  const progressEl = document.getElementById('srsProgress');
+  progressEl.textContent = 'Complete';
+  const body = document.getElementById('srsBody');
+
+  // Get gap analysis if available
+  const langs = [...new Set(srsReviewQueue.map(c => c.lang))];
+  let gapHtml = '';
+  for (const lang of langs) {
+    const gap = localStorage.getItem('watson_srs_gap_' + lang);
+    if (gap) {
+      const langNames = { spanish: 'Spanish', japanese: 'Japanese', arabic: 'Arabic', russian: 'Russian' };
+      gapHtml += `<div class="srs-gap-analysis"><h5>${langNames[lang] || lang} Patterns</h5><p>${escapeHtml(gap)}</p></div>`;
+    }
+  }
+
+  const totalCards = getSrsCards().length;
+  const nextDue = getSrsCards()
+    .filter(c => c.due)
+    .sort((a, b) => a.due.localeCompare(b.due))
+    .find(c => c.due > new Date().toISOString().slice(0, 10));
+  const nextDueText = nextDue ? `Next review: ${nextDue.due}` : '';
+
+  body.innerHTML = `
+    <div class="srs-done">
+      <div class="srs-done-icon">&#128373;</div>
+      <h4>All caught up!</h4>
+      <p>You reviewed ${srsSessionStats.reviewed} card${srsSessionStats.reviewed !== 1 ? 's' : ''} this session.</p>
+      <div class="srs-stats-row">
+        <div class="srs-stat">
+          <div class="srs-stat-val" style="color:var(--red);">${srsSessionStats.forgot}</div>
+          <div class="srs-stat-label">Forgot</div>
+        </div>
+        <div class="srs-stat">
+          <div class="srs-stat-val" style="color:#c87a3e;">${srsSessionStats.hard}</div>
+          <div class="srs-stat-label">Hard</div>
+        </div>
+        <div class="srs-stat">
+          <div class="srs-stat-val" style="color:var(--amber);">${srsSessionStats.good}</div>
+          <div class="srs-stat-label">Good</div>
+        </div>
+        <div class="srs-stat">
+          <div class="srs-stat-val" style="color:var(--green);">${srsSessionStats.easy}</div>
+          <div class="srs-stat-label">Elementary</div>
+        </div>
+      </div>
+      <p style="color:var(--text3);">${totalCards} total cards in deck. ${nextDueText}</p>
+      ${gapHtml}
+      <button class="btn btn-primary" onclick="goHome()" style="margin-top:24px;">Back to Study</button>
+    </div>
+  `;
+}
+
+// Update the home screen review button
+function updateSrsHomeButton() {
+  const btn = document.getElementById('srsHomeBtn');
+  const countEl = document.getElementById('srsDueCount');
+  if (!btn || !countEl) return;
+
+  const dueCount = getDueCards().length;
+  if (dueCount > 0) {
+    btn.style.display = '';
+    countEl.textContent = dueCount;
+  } else {
+    // Show button but without count if there are cards at all
+    const totalCards = getSrsCards().length;
+    if (totalCards > 0) {
+      btn.style.display = '';
+      countEl.textContent = '0';
+    } else {
+      btn.style.display = 'none';
+    }
+  }
 }
 
 // ── Init ──
