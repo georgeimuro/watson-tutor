@@ -1199,6 +1199,65 @@
   .cheat-btn:hover { border-color: var(--amber); color: var(--amber); }
   .cheat-btn.active { background: var(--amber-soft); border-color: var(--amber); color: var(--amber); }
 
+  /* Mode toggle switch — bottom left of session screen */
+  .mode-switch {
+    position: absolute;
+    bottom: 80px;
+    left: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    z-index: 5;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+  }
+
+  .mode-switch:hover { opacity: 1; }
+
+  .mode-switch-track {
+    width: 36px;
+    height: 20px;
+    background: var(--surface3);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    position: relative;
+    transition: background-color 0.3s;
+  }
+
+  .mode-switch.freeform .mode-switch-track {
+    background: var(--amber-soft);
+    border-color: var(--amber);
+  }
+
+  .mode-switch-thumb {
+    width: 16px;
+    height: 16px;
+    background: var(--text2);
+    border-radius: 50%;
+    position: absolute;
+    top: 1px;
+    left: 1px;
+    transition: transform 0.3s, background-color 0.3s;
+  }
+
+  .mode-switch.freeform .mode-switch-thumb {
+    transform: translateX(16px);
+    background: var(--amber);
+  }
+
+  .mode-switch-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text2);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .mode-switch.freeform .mode-switch-label {
+    color: var(--amber);
+  }
+
   /* Cheat sheet panel */
   .cheat-sheet {
     display: none;
@@ -2307,9 +2366,14 @@
     <div class="timer" id="timer">0:00</div>
     <button class="cheat-btn" id="cheatBtn" onclick="toggleCheatSheet()" title="Cheat sheet">&#128209;</button>
     <button class="cheat-btn" id="autoBreakBtn" onclick="toggleAutoBreakdown()" title="Auto-show word breakdown">&#25991;</button>
-    <button class="cheat-btn" id="modeToggleBtn" onclick="toggleSessionMode()" title="Toggle Guided/Freeform">G</button>
     <button class="mic-btn listening" id="micBtn" onclick="toggleMic()">&#127908;</button>
     <button class="end-btn" id="endBtn" onclick="endSession()" title="End session">&#9632;</button>
+  </div>
+  <div class="mode-switch" id="modeSwitch" onclick="toggleSessionMode()">
+    <div class="mode-switch-track">
+      <div class="mode-switch-thumb" id="modeSwitchThumb"></div>
+    </div>
+    <span class="mode-switch-label" id="modeSwitchLabel">Guided</span>
   </div>
 </div>
 
@@ -2444,12 +2508,13 @@ function toggleAutoBreakdown() {
 
 function setMode(mode) {
   sessionMode = mode;
-  // Update toggle button in session controls
-  const btn = document.getElementById('modeToggleBtn');
-  if (btn) {
-    btn.textContent = mode === 'guided' ? 'G' : 'F';
-    btn.title = mode === 'guided' ? 'Guided mode (click for Freeform)' : 'Freeform mode (click for Guided)';
-    btn.classList.toggle('active', mode === 'freeform');
+  const sw = document.getElementById('modeSwitch');
+  const label = document.getElementById('modeSwitchLabel');
+  if (sw) {
+    sw.classList.toggle('freeform', mode === 'freeform');
+  }
+  if (label) {
+    label.textContent = mode === 'guided' ? 'Guided' : 'Freeform';
   }
 }
 
