@@ -2219,7 +2219,7 @@
 <!-- Case Board Sidebar -->
 <div class="case-board" id="caseBoard">
   <div class="cb-header">
-    <img src="sherlock.svg" style="width:28px;height:28px;filter:brightness(0.6) sepia(1) hue-rotate(350deg) saturate(3);opacity:0.8;vertical-align:middle;"> The Case Board
+    <img src="sherlock.svg" style="width:40px;height:40px;filter:brightness(1.2) sepia(1) hue-rotate(350deg) saturate(2);opacity:0.9;vertical-align:middle;"> The Case Board
   </div>
   <button class="srs-home-btn" id="srsHomeBtn" onclick="showSrsReview()">
     Review Cards <span class="srs-due-count" id="srsDueCount"></span>
@@ -3923,7 +3923,7 @@ function updateCaseBoard() {
   // Active cases
   if (activeCases.length > 0) {
     html += '<div class="cb-section-title">&#128270; Active Cases</div>';
-    for (const c of activeCases.slice(0, 6)) {
+    for (const c of activeCases.slice(0, 4)) {
       html += `<div class="cb-case">
         <span class="case-lang">${c.flag}</span>
         <div class="case-name">${c.name}</div>
