@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Watson Tutor</title>
 <link rel="manifest" href="manifest.json">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1287,6 +1287,36 @@
     border-bottom: 1px solid var(--border);
   }
 
+  .cheat-sheet .cheat-close {
+    display: none;
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text2);
+    font-size: 20px;
+    width: 44px;
+    height: 44px;
+    border-radius: 8px;
+    cursor: pointer;
+    z-index: 51;
+  }
+  .cheat-close:active { background: var(--surface2); }
+
+  .case-board-mobile-toggle {
+    display: none;
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text2);
+    font-size: 14px;
+    cursor: pointer;
+    padding: 5px 8px;
+    border-radius: 4px;
+    min-height: 44px;
+  }
+  .case-board-mobile-toggle:active { color: var(--amber); border-color: var(--amber); }
+
   .cheat-word {
     padding: 8px 0;
     border-bottom: 1px solid var(--border);
@@ -2278,8 +2308,36 @@
   }
 
   /* ── Tablet (max-width: 900px) ── */
-  /* Sidebar already hidden by default (only shows at min-width:900px) */
+  /* Sidebar slides in from left on tap, not fixed on screen */
   @media (max-width: 900px) {
+    .case-board-mobile-toggle {
+      display: inline-block;
+    }
+    .case-board {
+      width: 85vw;
+      max-width: 320px;
+      z-index: 60;
+      transition: transform 0.3s ease;
+      transform: translateX(-100%);
+      display: block !important;
+    }
+    .case-board.visible {
+      transform: translateX(0);
+    }
+    .case-board.hidden {
+      transform: translateX(-100%);
+    }
+    .case-board-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 55;
+    }
+    .case-board-backdrop.visible {
+      display: block;
+    }
+
     .setup-screen {
       margin-left: 0;
     }
@@ -2538,6 +2596,20 @@
     .cheat-sheet h4 {
       font-size: 18px;
     }
+    .cheat-sheet .cheat-close {
+      display: block;
+    }
+
+    /* Word breakdown: stack vertically on mobile */
+    .breakdown-row {
+      flex-wrap: wrap;
+      gap: 4px 8px;
+    }
+    .bd-kanji { min-width: unset; }
+    .bd-reading { min-width: unset; }
+    .bd-romaji { min-width: unset; }
+
+    /* Evidence Board: inherits slide-in from tablet breakpoint */
 
     /* --- Review Screen --- */
     .review-header {
@@ -2773,11 +2845,13 @@
   </button>
   <div id="caseBoardContent"></div>
 </div>
+<div class="case-board-backdrop" id="caseBoardBackdrop" onclick="toggleCaseBoardMobile()"></div>
 
 <!-- Header -->
 <div class="header">
   <div class="logo" onclick="goHome()" style="cursor:pointer;">Watson <span>Tutor</span></div>
   <div class="header-right">
+    <button class="case-board-mobile-toggle" id="cbMobileToggle" onclick="toggleCaseBoardMobile()">&#128270;</button>
     <button class="nav-btn" onclick="showProgress()">Progress</button>
     <div class="streak-badge cold" id="streakBadge">
       <svg viewBox="0 0 24 24" class="flame-svg" width="20" height="20">
@@ -2846,6 +2920,7 @@
   <div class="session-content">
     <div class="transcript" id="transcript"></div>
     <div class="cheat-sheet" id="cheatSheet">
+      <button class="cheat-close" onclick="toggleCheatSheet()">&times;</button>
       <h4>Words Learned</h4>
       <div id="cheatList"><span class="cheat-empty">Words will appear here as you learn them. Type "add [word] = [meaning]" to add manually.</span></div>
     </div>
@@ -3300,6 +3375,13 @@ async function startSession() {
             + breakdownHtml;
           document.getElementById('transcript').scrollTop = document.getElementById('transcript').scrollHeight;
         });
+      }
+
+      // Gemini annotation: pronunciation + breakdown + vocab for ALL languages
+      // For Japanese: also serves as fallback if kuroshiro isn't ready
+      if (turnBubbleId && (selectedLang !== 'japanese' || !kuroshiroReady)) {
+        const apiKey = getSettings().apiKey;
+        if (apiKey) queueAnnotation(turnText, turnBubbleId, selectedLang, apiKey);
       }
     }
     if (sc.interrupted) { clearPlayback(); currentTutorTurn = ''; }
@@ -3847,6 +3929,21 @@ function toggleCheatSheet() {
   const btn = document.getElementById('cheatBtn');
   sheet.classList.toggle('visible');
   btn.classList.toggle('active');
+}
+
+function toggleCaseBoardMobile() {
+  const cb = document.getElementById('caseBoard');
+  const backdrop = document.getElementById('caseBoardBackdrop');
+  const isOpen = cb.classList.contains('visible');
+  if (isOpen) {
+    cb.classList.remove('visible');
+    cb.classList.add('hidden');
+    backdrop.classList.remove('visible');
+  } else {
+    cb.classList.remove('hidden');
+    cb.classList.add('visible');
+    backdrop.classList.add('visible');
+  }
 }
 
 function addCheatWord(term, meaning, reading, romaji) {
@@ -5163,6 +5260,10 @@ function updateSrsHomeButton() {
   // Register PWA service worker
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
+  // Request persistent storage (prevents iOS 7-day eviction for active PWAs)
+  if (navigator.storage && navigator.storage.persist) {
+    navigator.storage.persist().catch(() => {});
   }
 })();
 </script>

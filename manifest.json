@@ -1,22 +1,27 @@
 {
+  "id": "watson-tutor",
   "name": "Watson Tutor",
   "short_name": "Watson",
   "description": "AI Language Learning Voice Tutor",
   "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#131110",
   "theme_color": "#c8943e",
   "orientation": "portrait",
+  "categories": ["education"],
   "icons": [
     {
       "src": "icon-192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     },
     {
       "src": "icon-512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     }
   ]
 }
