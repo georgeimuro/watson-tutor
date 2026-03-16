@@ -2225,7 +2225,7 @@
   <div class="cb-header">
     <span class="moriarty">&#128373;</span> The Case Board
   </div>
-  <button class="srs-home-btn" id="srsHomeBtn" onclick="showSrsReview()" style="display:none;">
+  <button class="srs-home-btn" id="srsHomeBtn" onclick="showSrsReview()">
     Review Cards <span class="srs-due-count" id="srsDueCount"></span>
   </button>
   <div id="caseBoardContent"></div>
@@ -2292,14 +2292,15 @@
     </div>
   </div>
 
-  <div class="mode-toggle" style="animation: fadeUp 0.7s ease 0.28s both;">
-    <button class="mode-btn active" id="guidedBtn" onclick="setMode('guided')">Guided</button>
-    <button class="mode-btn" id="freeformBtn" onclick="setMode('freeform')">Freeform</button>
+  <div style="display:flex;align-items:center;gap:12px;animation: fadeUp 0.7s ease 0.28s both;">
+    <div class="mode-toggle">
+      <button class="mode-btn active" id="guidedBtn" onclick="setMode('guided')">Guided</button>
+      <button class="mode-btn" id="freeformBtn" onclick="setMode('freeform')">Freeform</button>
+    </div>
+    <button class="btn btn-primary" id="startBtn" onclick="startSession()" disabled style="animation:none;">
+      Begin Session
+    </button>
   </div>
-
-  <button class="btn btn-primary" id="startBtn" onclick="startSession()" disabled>
-    Begin Session
-  </button>
 
 </div>
 
@@ -2329,8 +2330,8 @@
   </div>
   <div class="review-body" id="reviewBody"></div>
   <div class="review-actions">
-    <button class="btn btn-secondary" onclick="downloadReview()">Save Report</button>
-    <button class="btn btn-primary" onclick="newSession()">New Session</button>
+    <button class="btn btn-secondary" onclick="goHome()">Home</button>
+    <button class="btn btn-primary" onclick="showSrsReview()">Review Cards</button>
   </div>
 </div>
 
@@ -4407,19 +4408,8 @@ function updateSrsHomeButton() {
   if (!btn || !countEl) return;
 
   const dueCount = getDueCards().length;
-  if (dueCount > 0) {
-    btn.style.display = '';
-    countEl.textContent = dueCount;
-  } else {
-    // Show button but without count if there are cards at all
-    const totalCards = getSrsCards().length;
-    if (totalCards > 0) {
-      btn.style.display = '';
-      countEl.textContent = '0';
-    } else {
-      btn.style.display = 'none';
-    }
-  }
+  btn.style.display = '';
+  countEl.textContent = dueCount;
 }
 
 // ── Init ──
