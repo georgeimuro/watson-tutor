@@ -2615,7 +2615,23 @@ async function startSession() {
     .map(c => `${c.word} (${c.meaning})`)
     .join(', ');
   if (forgotWords) {
-    srsFeedback = `\n\nWORDS THE STUDENT STRUGGLES WITH (naturally weave these into conversation — do NOT announce you're reviewing): ${forgotWords}`;
+    srsFeedback += `\n\nWORDS THE STUDENT STRUGGLES WITH (naturally weave these into conversation — do NOT announce you're reviewing): ${forgotWords}`;
+  }
+
+  // Add gap analysis from previous sessions
+  const gapAnalysis = localStorage.getItem('watson_srs_gap_' + selectedLang);
+  if (gapAnalysis) {
+    srsFeedback += `\n\nPATTERN ANALYSIS FROM PREVIOUS SESSIONS: ${gapAnalysis}`;
+  }
+
+  // Add mastered words so tutor can build on them
+  const masteredWords = srsCards
+    .filter(c => c.lang === selectedLang && c.stability > 10 && c.lapses === 0)
+    .slice(0, 15)
+    .map(c => c.word)
+    .join(', ');
+  if (masteredWords) {
+    srsFeedback += `\n\nWORDS THE STUDENT KNOWS WELL (use these freely, build on them): ${masteredWords}`;
   }
 
   const systemPrompt = lang.system({ name: settings.name, level: settings.level }) + modeInstruction + srsFeedback;
