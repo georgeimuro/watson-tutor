@@ -2305,6 +2305,29 @@
       padding-top: env(safe-area-inset-top);
       padding-bottom: env(safe-area-inset-bottom);
     }
+    .cheat-sheet .cheat-close {
+      top: calc(16px + env(safe-area-inset-top));
+    }
+    .cheat-sheet {
+      padding-top: calc(60px + env(safe-area-inset-top));
+    }
+    .case-board {
+      top: calc(50px + env(safe-area-inset-top));
+    }
+    /* SRS, review, progress headers in standalone mode */
+    .srs-header, .review-header, .progress-header {
+      padding-top: calc(14px + env(safe-area-inset-top));
+    }
+  }
+
+  /* Standalone PWA mode — ensure safe areas are respected */
+  @media (display-mode: standalone) {
+    .header {
+      padding-top: calc(14px + env(safe-area-inset-top, 0px));
+    }
+    .controls {
+      padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+    }
   }
 
   /* ── Tablet (max-width: 900px) ── */
