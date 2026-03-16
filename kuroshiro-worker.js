@@ -1,8 +1,10 @@
 // Kuroshiro Web Worker — Japanese text processing off the main thread
 // Dictionary + J-E lookup all local, zero API calls
 
-importScripts('/kuroshiro.min.js');
-importScripts('/kuroshiro-analyzer-kuromoji.min.js');
+// Resolve base URL for GitHub Pages compatibility (site may be at /watson-tutor/)
+const basePath = self.location.href.replace(/\/[^/]*$/, '/');
+importScripts(basePath + 'kuroshiro.min.js');
+importScripts(basePath + 'kuroshiro-analyzer-kuromoji.min.js');
 
 const KuroshiroClass = self.Kuroshiro.default;
 const AnalyzerClass = self.KuromojiAnalyzer;
@@ -73,11 +75,11 @@ function katakanaToRomaji(katakana) {
 async function init() {
   // Load J-E dictionary
   try {
-    const resp = await fetch('/jdict.json');
+    const resp = await fetch(basePath + 'jdict.json');
     jdict = await resp.json();
   } catch(e) { jdict = {}; }
 
-  analyzer = new AnalyzerClass({ dictPath: '/dict/' });
+  analyzer = new AnalyzerClass({ dictPath: basePath + 'dict/' });
   kuroshiro = new KuroshiroClass();
   await kuroshiro.init(analyzer);
   ready = true;
