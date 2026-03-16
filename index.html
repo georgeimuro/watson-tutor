@@ -2292,15 +2292,9 @@
     </div>
   </div>
 
-  <div style="display:flex;align-items:center;gap:12px;animation: fadeUp 0.7s ease 0.28s both;">
-    <div class="mode-toggle">
-      <button class="mode-btn active" id="guidedBtn" onclick="setMode('guided')">Guided</button>
-      <button class="mode-btn" id="freeformBtn" onclick="setMode('freeform')">Freeform</button>
-    </div>
-    <button class="btn btn-primary" id="startBtn" onclick="startSession()" disabled style="animation:none;">
-      Begin Session
-    </button>
-  </div>
+  <button class="btn btn-primary" id="startBtn" onclick="startSession()" disabled>
+    Begin Session
+  </button>
 
 </div>
 
@@ -2317,6 +2311,7 @@
     <div class="timer" id="timer">0:00</div>
     <button class="cheat-btn" id="cheatBtn" onclick="toggleCheatSheet()" title="Cheat sheet">&#128209;</button>
     <button class="cheat-btn" id="autoBreakBtn" onclick="toggleAutoBreakdown()" title="Auto-show word breakdown">&#25991;</button>
+    <button class="cheat-btn" id="modeToggleBtn" onclick="toggleSessionMode()" title="Toggle Guided/Freeform">G</button>
     <button class="mic-btn listening" id="micBtn" onclick="toggleMic()">&#127908;</button>
     <button class="end-btn" id="endBtn" onclick="endSession()" title="End session">&#9632;</button>
   </div>
@@ -2384,6 +2379,11 @@
       <option value="heritage">Heritage speaker (rusty)</option>
       <option value="advanced">Advanced</option>
     </select>
+    <label>Default Mode</label>
+    <select id="modeInput">
+      <option value="guided">Guided (tutor steers toward weak points)</option>
+      <option value="freeform">Freeform (you lead the conversation)</option>
+    </select>
     <div class="btn-row">
       <button class="btn btn-secondary" onclick="closeSettings()">Cancel</button>
       <button class="btn btn-primary" onclick="saveSettings()">Save</button>
@@ -2448,8 +2448,19 @@ function toggleAutoBreakdown() {
 
 function setMode(mode) {
   sessionMode = mode;
-  document.getElementById('guidedBtn').classList.toggle('active', mode === 'guided');
-  document.getElementById('freeformBtn').classList.toggle('active', mode === 'freeform');
+  // Update toggle button in session controls
+  const btn = document.getElementById('modeToggleBtn');
+  if (btn) {
+    btn.textContent = mode === 'guided' ? 'G' : 'F';
+    btn.title = mode === 'guided' ? 'Guided mode (click for Freeform)' : 'Freeform mode (click for Guided)';
+    btn.classList.toggle('active', mode === 'freeform');
+  }
+}
+
+function toggleSessionMode() {
+  setMode(sessionMode === 'guided' ? 'freeform' : 'guided');
+  // Save preference per language
+  if (selectedLang) localStorage.setItem('watson_mode_' + selectedLang, sessionMode);
 }
 
 // ── Buffered Audio Playback ──
@@ -2513,6 +2524,7 @@ function openSettings() {
   document.getElementById('apiKeyInput').value = s.apiKey;
   document.getElementById('nameInput').value = s.name;
   document.getElementById('levelInput').value = s.level;
+  document.getElementById('modeInput').value = localStorage.getItem('watson_default_mode') || 'guided';
   document.getElementById('settingsModal').classList.add('active');
 }
 function closeSettings() { document.getElementById('settingsModal').classList.remove('active'); }
@@ -2520,6 +2532,9 @@ function saveSettings() {
   const key = document.getElementById('apiKeyInput').value.trim();
   const name = document.getElementById('nameInput').value.trim();
   const level = document.getElementById('levelInput').value;
+  const defaultMode = document.getElementById('modeInput').value;
+  localStorage.setItem('watson_default_mode', defaultMode);
+  sessionMode = defaultMode;
   if (key) localStorage.setItem('watson_api_key', key);
   if (name) localStorage.setItem('watson_name', name);
   localStorage.setItem('watson_level', level);
@@ -2576,6 +2591,10 @@ registerProcessor('audio-capture', AudioCapture);
 async function startSession() {
   const settings = getSettings();
   if (!settings.apiKey || !selectedLang) return;
+
+  // Load saved mode preference for this language
+  const savedMode = localStorage.getItem('watson_mode_' + selectedLang);
+  if (savedMode) setMode(savedMode);
 
   // Clean up any previous session
   if (ws) { try { ws.close(); } catch(e) {} ws = null; }
