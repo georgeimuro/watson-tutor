@@ -274,6 +274,20 @@ Watson (Claude) reads from the vault. Scripts write to it. Clean separation.
 
 ---
 
+## The Long Game — Why This Matters
+
+This system isn't just about getting through this semester. It's a compounding investment.
+
+Imagine you start building Watson now as a pre-med student. By the time you're studying for the MCAT, Watson has two years of data on you — which concepts clicked and which didn't, your optimal study times based on Anki retention curves, sleep and workout patterns correlated with performance, which professors' emphasis patterns predicted exam questions, which types of mistakes you repeat.
+
+That's not a generic MCAT prep course. That's personalized prep built from YOUR data, YOUR patterns, YOUR weak points — accumulated over years, not crammed in 3 months.
+
+And it keeps going. Medical school. Board exams. Residency. Every stage builds on the data from the last. The Anki cards you make now for biochemistry show up again when you're studying for Step 1. The study patterns Watson identified in undergrad inform how you approach clinical rotations.
+
+Most people start from scratch every time they face a new exam. You don't. Watson remembers everything.
+
+---
+
 ## Getting Started Checklist
 
 1. [ ] Install Claude Code
