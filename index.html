@@ -1660,6 +1660,66 @@
     padding: 8px;
   }
   .explore-link:hover { color: var(--amber); }
+
+  /* ── Bottom Tab Bar ── */
+  .tab-bar {
+    display: none;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    padding: 6px 0;
+    padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px));
+    z-index: 40;
+    justify-content: space-around;
+    align-items: center;
+  }
+  .tab-bar.visible { display: flex; }
+  .tab-bar-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 4px 12px;
+    border: none;
+    background: none;
+    color: var(--text3);
+    font-family: var(--body);
+    font-size: 10px;
+    cursor: pointer;
+    min-width: 56px;
+    min-height: 44px;
+    transition: color 0.2s;
+  }
+  .tab-bar-item:active { transform: scale(0.95); }
+  .tab-bar-item.active { color: var(--amber); }
+  .tab-bar-icon { font-size: 20px; line-height: 1; }
+  .tab-bar-label { letter-spacing: 0.5px; }
+  .tab-bar-badge {
+    position: absolute;
+    top: 2px;
+    right: 6px;
+    background: var(--red);
+    color: white;
+    font-size: 9px;
+    font-weight: 700;
+    padding: 1px 5px;
+    border-radius: 8px;
+    min-width: 16px;
+    text-align: center;
+  }
+
+  /* Adjust body for tab bar space on mobile */
+  @media (max-width: 900px) {
+    .tab-bar { display: flex; }
+    body { padding-bottom: 60px; }
+    .pwa-standalone body { padding-bottom: calc(60px + env(safe-area-inset-bottom, 34px)); }
+    /* Hide header nav buttons when tab bar is present */
+    .header .nav-btn { display: none; }
+    .header .settings-btn { display: none; }
+  }
   .api-key-inline {
     width: 100%;
     max-width: 360px;
@@ -3543,6 +3603,31 @@
   </div>
 </div>
 
+<!-- Bottom Tab Bar (mobile) -->
+<div class="tab-bar" id="tabBar">
+  <button class="tab-bar-item active" onclick="switchTab('home')" id="tab-home">
+    <span class="tab-bar-icon">&#127968;</span>
+    <span class="tab-bar-label">Home</span>
+  </button>
+  <button class="tab-bar-item" onclick="switchTab('quest')" id="tab-quest">
+    <span class="tab-bar-icon">&#128506;</span>
+    <span class="tab-bar-label">Quest</span>
+  </button>
+  <button class="tab-bar-item" onclick="switchTab('cards')" id="tab-cards" style="position:relative;">
+    <span class="tab-bar-icon">&#128451;</span>
+    <span class="tab-bar-label">Cards</span>
+    <span class="tab-bar-badge" id="tabCardsBadge" style="display:none;"></span>
+  </button>
+  <button class="tab-bar-item" onclick="switchTab('stats')" id="tab-stats">
+    <span class="tab-bar-icon">&#128200;</span>
+    <span class="tab-bar-label">Stats</span>
+  </button>
+  <button class="tab-bar-item" onclick="switchTab('more')" id="tab-more">
+    <span class="tab-bar-icon">&#9881;</span>
+    <span class="tab-bar-label">More</span>
+  </button>
+</div>
+
 <script>
 // ── Kuroshiro Web Worker (Japanese, local dictionary, off main thread) ──
 let kuroshiroWorker = null;
@@ -3591,6 +3676,56 @@ let timerInterval = null;
 let micMuted = false;
 let reviewMarkdown = '';
 let sessionMode = 'guided';
+
+// ── Tab Bar Navigation ──
+function switchTab(tab) {
+  // Update tab bar active state
+  document.querySelectorAll('.tab-bar-item').forEach(t => t.classList.remove('active'));
+  const tabBtn = document.getElementById('tab-' + tab);
+  if (tabBtn) tabBtn.classList.add('active');
+
+  // Route to the right screen
+  switch(tab) {
+    case 'home':
+      goHome();
+      break;
+    case 'quest':
+      // For now, show progress — will become the path map
+      showProgress();
+      break;
+    case 'cards':
+      showSrsReview();
+      break;
+    case 'stats':
+      showProgress();
+      break;
+    case 'more':
+      openSettings();
+      break;
+  }
+}
+
+function updateTabBarBadge() {
+  const badge = document.getElementById('tabCardsBadge');
+  if (!badge) return;
+  const due = getDueCards().length;
+  if (due > 0) {
+    badge.textContent = due;
+    badge.style.display = '';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+// Hide tab bar during active session
+function hideTabBar() {
+  const bar = document.getElementById('tabBar');
+  if (bar) bar.classList.remove('visible');
+}
+function showTabBar() {
+  const bar = document.getElementById('tabBar');
+  if (bar) bar.classList.add('visible');
+}
 let autoBreakdown = false;
 
 function toggleAutoBreakdown() {
@@ -3810,7 +3945,29 @@ function buildLessonPrompt(lang, settings) {
 
   // Base tutor personality
   let prompt = `You are ${langConfig.name}, ${langConfig.personality}.\n\n`;
-  prompt += `About the student:\n- Name: ${settings.name}\n\n`;
+
+  // Check if this is the first session for this language
+  const records = JSON.parse(localStorage.getItem('watson_sessions') || '[]');
+  const langSessions = records.filter(r => r.language === lang).length;
+  const isFirstSession = langSessions === 0;
+  const hasName = settings.name && settings.name !== 'Student';
+
+  if (hasName) {
+    prompt += `About the student:\n- Name: ${settings.name}\n\n`;
+  }
+
+  // First session instructions
+  if (isFirstSession) {
+    prompt += `FIRST SESSION: This is the student's very first time with you.\n`;
+    if (!hasName) {
+      prompt += `- Start by greeting them in ${lang} (one short phrase), then in their language ask what they'd like to be called.\n`;
+    } else {
+      prompt += `- Greet ${settings.name} warmly in ${lang}, then ask about their experience with the language.\n`;
+    }
+    prompt += `- Ask if they've studied this language before to gauge their level.\n`;
+    prompt += `- Ask what got them interested — do they watch any shows, listen to music, or have other connections to the language?\n`;
+    prompt += `- Keep the first few exchanges warm and welcoming. Build comfort before teaching.\n\n`;
+  }
 
   // Core conversation rules (same for all languages)
   prompt += `Core rules:\n`;
@@ -4402,6 +4559,7 @@ function showSession() {
   document.getElementById('setupScreen').style.display = 'none';
   document.getElementById('readyScreen').classList.remove('active');
   document.getElementById('sessionScreen').classList.add('active');
+  hideTabBar();
   // Hide case board during session and review for more space
   document.getElementById('caseBoard').classList.add('hidden');
   lastSender = null; lastBubble = null;
@@ -4626,6 +4784,8 @@ function goHome() {
   document.getElementById('caseBoard').classList.remove('hidden');
   lastSender = null; lastBubble = null;
   refreshHomeScreen();
+  showTabBar();
+  updateTabBarBadge();
 }
 
 // ── Session Tracking (localStorage) ──
@@ -6202,6 +6362,8 @@ function updateSrsHomeButton() {
     // Returning user — rebuild home with their languages
     rebuildHomeScreen();
     refreshHomeScreen();
+    showTabBar();
+    updateTabBarBadge();
     // Update home review button
     const dueCount = getDueCards().length;
     const reviewBtn = document.getElementById('reviewHomeBtn');
