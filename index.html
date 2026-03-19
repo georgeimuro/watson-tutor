@@ -37,7 +37,7 @@
     'watson_sessions', 'watson_srs_cards', 'watson_learning_profile',
   ];
   const SYNC_PATTERNS = [
-    'watson_mode_', 'watson_cheat_', 'watson_srs_gap_', 'watson_elementary_shown_'
+    'watson_mode_', 'watson_cheat_', 'watson_srs_gap_', 'watson_elementary_shown_', 'watson_media_'
   ];
 
   function initFirebase() {
@@ -1508,6 +1508,20 @@
     z-index: 51;
   }
   .cheat-close:active { background: var(--surface2); }
+
+  .topic-chip {
+    padding: 8px 14px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text2);
+    font-family: var(--body);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .topic-chip:hover { border-color: var(--brass); color: var(--cream); }
+  .topic-chip.selected { border-color: var(--amber); color: var(--amber); background: var(--amber-soft); }
 
   .case-board-mobile-toggle {
     display: none;
@@ -3178,6 +3192,53 @@
       <div class="rank-display" id="rank-japanese"></div>
       <div class="session-count" id="sessions-japanese"></div>
     </div>
+    <div class="lang-card" data-lang="korean" onclick="selectLang(this)">
+      <span class="flag">&#127472;&#127479;</span>
+      <div class="name">Korean</div>
+      <div class="tutor">with Minji</div>
+      <div class="rank-display" id="rank-korean"></div>
+      <div class="session-count" id="sessions-korean"></div>
+    </div>
+    <div class="lang-card" data-lang="french" onclick="selectLang(this)">
+      <span class="flag">&#127467;&#127479;</span>
+      <div class="name">French</div>
+      <div class="tutor">with Camille</div>
+      <div class="rank-display" id="rank-french"></div>
+      <div class="session-count" id="sessions-french"></div>
+    </div>
+    <div class="lang-card" data-lang="english" onclick="selectLang(this)">
+      <span class="flag">&#127468;&#127463;</span>
+      <div class="name">English</div>
+      <div class="tutor">with Emma</div>
+      <div class="rank-display" id="rank-english"></div>
+      <div class="session-count" id="sessions-english"></div>
+    </div>
+    <div class="lang-card" data-lang="chinese" onclick="selectLang(this)">
+      <span class="flag">&#127464;&#127475;</span>
+      <div class="name">Chinese</div>
+      <div class="tutor">with Wei</div>
+      <div class="rank-display" id="rank-chinese"></div>
+      <div class="session-count" id="sessions-chinese"></div>
+    </div>
+  </div>
+
+  <!-- Topic Selector (appears after language is selected) -->
+  <div id="topicSelector" style="display:none; width:100%; max-width:560px;">
+    <div class="divider">or pick a topic</div>
+    <div style="display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin-bottom:12px;">
+      <button class="topic-chip" onclick="setTopicChip(this)">My day</button>
+      <button class="topic-chip" onclick="setTopicChip(this)">Hobbies</button>
+      <button class="topic-chip" onclick="setTopicChip(this)">Food</button>
+      <button class="topic-chip" onclick="setTopicChip(this)">Travel</button>
+      <button class="topic-chip" onclick="setTopicChip(this)">Music</button>
+      <button class="topic-chip" onclick="setTopicChip(this)">Sports</button>
+      <button class="topic-chip" onclick="setTopicChip(this)">Movies</button>
+      <button class="topic-chip" onclick="setTopicChip(this)">Quiz me</button>
+    </div>
+    <input type="text" id="topicInput" placeholder="Or type anything you want to talk about..."
+      style="width:100%; padding:10px 14px; background:var(--surface2); border:1px solid var(--border); border-radius:6px; color:var(--text); font-family:var(--body); font-size:13px;"
+      onkeydown="if(event.key==='Enter'){startSession();}">
+    <p style="font-size:11px; color:var(--text3); margin-top:6px; text-align:center;">Leave empty for a guided lesson based on your level</p>
   </div>
 
   <button class="btn btn-primary" id="startBtn" onclick="startSession()" disabled>
@@ -3278,6 +3339,11 @@
       <option value="guided">Guided (tutor steers toward weak points)</option>
       <option value="freeform">Freeform (you lead the conversation)</option>
     </select>
+    <!-- Media Preferences -->
+    <label>Media Immersion <span style="font-size:11px;color:var(--text3);font-weight:400;">(shows, music, podcasts you enjoy in your target language)</span></label>
+    <input type="text" id="mediaInput" placeholder="e.g. Squid Game, Attack on Titan, Bad Bunny...">
+    <p class="help-text">Watson will reference what you watch and listen to in conversations. Separate with commas.</p>
+
     <!-- Cloud Sync -->
     <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
       <label>Cloud Sync</label>
@@ -3392,25 +3458,245 @@ function clearPlayback() {
   nextPlayTime = 0;
 }
 
+// ── Curriculum Data ──
+// Topic sequence per level, based on COERLL/CEFR open source curricula
+const CURRICULUM = {
+  newcomer: {
+    label: 'Newcomer', cefr: 'A1 lower',
+    units: [
+      { topic: 'Greetings & introductions', vocab: 'hello, goodbye, my name is, nice to meet you, how are you, please, thank you', canDo: 'Can greet and introduce themselves' },
+      { topic: 'Numbers, age, dates', vocab: 'numbers 1-100, age, birthday, days of the week, months', canDo: 'Can say numbers and talk about dates' },
+      { topic: 'Family & people', vocab: 'mother, father, brother, sister, friend, tall, short, young, old', canDo: 'Can describe family members' },
+      { topic: 'Daily routine', vocab: 'wake up, eat, go to school/work, sleep, morning, afternoon, night, time', canDo: 'Can describe their daily routine' },
+    ]
+  },
+  traveler: {
+    label: 'Traveler', cefr: 'A1 upper',
+    units: [
+      { topic: 'Food & ordering', vocab: 'menu, water, coffee, chicken, rice, the check, I would like, how much', canDo: 'Can order food at a restaurant' },
+      { topic: 'Shopping & money', vocab: 'how much does it cost, expensive, cheap, buy, pay, colors, sizes', canDo: 'Can handle basic shopping transactions' },
+      { topic: 'Directions & places', vocab: 'where is, left, right, straight, near, far, street, store, bus, taxi', canDo: 'Can ask for and understand basic directions' },
+      { topic: 'Home & rooms', vocab: 'house, room, kitchen, bathroom, bed, table, big, small, my house has', canDo: 'Can describe their living space' },
+    ]
+  },
+  local: {
+    label: 'Local', cefr: 'A2 lower',
+    units: [
+      { topic: 'Making plans', vocab: 'tomorrow, next week, want to, let us, what time, where, invite, agree, decline', canDo: 'Can make and respond to invitations' },
+      { topic: 'Phone calls & messages', vocab: 'call, text, sorry I missed, can you repeat, speak slower, I will call back', canDo: 'Can handle basic phone conversations' },
+      { topic: 'Weather & seasons', vocab: 'hot, cold, rain, sun, snow, wind, spring, summer, fall, winter, today is', canDo: 'Can talk about weather and seasons' },
+      { topic: 'Hobbies & interests', vocab: 'I like, I enjoy, music, sports, reading, movies, cooking, playing, free time', canDo: 'Can discuss hobbies and interests' },
+    ]
+  },
+  resident: {
+    label: 'Resident', cefr: 'A2 upper',
+    units: [
+      { topic: 'Health & body', vocab: 'head, stomach, hurts, sick, doctor, medicine, appointment, I feel, fever', canDo: 'Can describe symptoms to a doctor' },
+      { topic: 'Handling problems', vocab: 'problem, broken, wrong order, help, excuse me, complaint, exchange, refund', canDo: 'Can handle complaints and unexpected situations' },
+      { topic: 'Past experiences', vocab: 'yesterday, last week, I went, I saw, it was, we had, did you, trip, vacation', canDo: 'Can describe past experiences' },
+      { topic: 'Opinions & preferences', vocab: 'I think, I prefer, better, worse, agree, disagree, because, in my opinion', canDo: 'Can express and explain opinions' },
+    ]
+  },
+  storyteller: {
+    label: 'Storyteller', cefr: 'B1 lower',
+    units: [
+      { topic: 'Telling stories', vocab: 'once, then, suddenly, meanwhile, finally, it turns out, the reason was', canDo: 'Can narrate a story or event in sequence' },
+      { topic: 'Future plans & goals', vocab: 'I plan to, I hope, someday, career, dream, study, travel, save money', canDo: 'Can discuss future plans and aspirations' },
+      { topic: 'Giving reasons', vocab: 'because, since, that is why, the reason is, so that, in order to', canDo: 'Can explain reasons and consequences' },
+      { topic: 'Feelings & emotions', vocab: 'happy, sad, worried, excited, nervous, surprised, disappointed, proud', canDo: 'Can describe and discuss emotions' },
+    ]
+  },
+  debater: {
+    label: 'Debater', cefr: 'B1 upper',
+    units: [
+      { topic: 'Arguments & persuasion', vocab: 'on the other hand, however, although, despite, I believe, evidence, point', canDo: 'Can argue a position with supporting reasons' },
+      { topic: 'Unexpected situations', vocab: 'what if, suppose, imagine, it depends, that is unusual, alternative, plan B', canDo: 'Can handle unexpected situations flexibly' },
+      { topic: 'Culture & traditions', vocab: 'custom, tradition, celebrate, typical, unique, similar, different, values', canDo: 'Can discuss cultural differences and traditions' },
+      { topic: 'News & current events', vocab: 'according to, report, issue, opinion, debate, support, oppose, impact', canDo: 'Can discuss news and current events' },
+    ]
+  },
+  insider: {
+    label: 'Insider', cefr: 'B2 lower',
+    units: [
+      { topic: 'Professional settings', vocab: 'interview, qualifications, experience, responsibilities, deadline, teamwork', canDo: 'Can handle professional conversations' },
+      { topic: 'Abstract topics', vocab: 'freedom, justice, progress, inequality, technology, environment, philosophy', canDo: 'Can discuss abstract concepts' },
+      { topic: 'Giving presentations', vocab: 'first, next, in conclusion, the main point, let me explain, as you can see', canDo: 'Can structure and deliver explanations clearly' },
+      { topic: 'Negotiation', vocab: 'offer, counter, compromise, terms, acceptable, deal, condition, flexible', canDo: 'Can negotiate and find compromises' },
+    ]
+  },
+  confidant: {
+    label: 'Confidant', cefr: 'B2 upper',
+    units: [
+      { topic: 'Humor & wordplay', vocab: 'joke, pun, sarcasm, irony, that is hilarious, double meaning, play on words', canDo: 'Can understand and use humor in the language' },
+      { topic: 'Idioms & expressions', vocab: 'common idioms, slang, colloquialisms, figurative language, proverbs', canDo: 'Can understand and use idiomatic expressions' },
+      { topic: 'Nuanced opinions', vocab: 'to some extent, it is debatable, from my perspective, nuance, subtle, implication', canDo: 'Can express nuanced and qualified opinions' },
+      { topic: 'Cultural deep dive', vocab: 'literature, film, history, social norms, generational differences, identity', canDo: 'Can discuss culture with depth and sensitivity' },
+    ]
+  }
+};
+
+const LEVEL_ORDER = ['newcomer','traveler','local','resident','storyteller','debater','insider','confidant'];
+
 // ── Language Configs ──
 const LANGS = {
   spanish: {
-    name: 'Lorenzo', voice: 'Orus',
-    system: (u) => `You are Lorenzo, a warm Mexican Spanish conversation partner and teacher.\n\nAbout the student:\n- Name: ${u.name}\n- Level: ${u.level}\n\nCore rules:\n- Speak IN SPANISH. This is an immersion conversation.\n- Only switch to English when correcting grammar. Format: brief English explanation, then correct Spanish.\n- Do NOT translate everything into English. The student is trying to immerse.\n- Keep responses 2-4 sentences. Conversation, not lecture.\n- Be PROACTIVE: teach vocabulary, point out interesting constructions, share etymology.\n- Use Mexican/Latin American expressions and explain them in Spanish.\n- NEVER just ask "what don't you understand?" -- pick something interesting and teach.\n- Track mistakes -- if the same error happens twice, flag the pattern.\n- Be natural, warm, responsive. This is a real-time voice conversation.\n- Naturally reuse vocabulary from previous conversations — don't announce reviews, just weave old words into new topics.`
+    name: 'Lorenzo', voice: 'Orus', flag: '&#127466;&#127480;',
+    personality: 'a warm Mexican Spanish conversation partner',
+    langRules: 'Speak IN SPANISH. Only switch to English when correcting grammar. Use Mexican/Latin American expressions. Break down word etymology when introducing new vocabulary.'
   },
   arabic: {
-    name: 'Khalid', voice: 'Orus',
-    system: (u) => `You are Khalid, a warm and patient Arabic conversation partner and teacher.\n\nAbout the student:\n- Name: ${u.name}\n- Level: ${u.level}\n\nCore rules:\n- Speak IN ARABIC (Modern Standard Arabic, with dialect awareness).\n- Only switch to English when correcting grammar. Format: brief English explanation, then correct Arabic.\n- For heritage speakers refreshing their Arabic: acknowledge what they know, build on it.\n- Keep responses 2-4 sentences. Conversation, not lecture.\n- Be PROACTIVE: teach vocabulary, explain root patterns (trilateral roots are fascinating), share etymology.\n- Break down word roots -- Arabic's root system is a superpower for learning vocabulary.\n- NEVER just ask "what don't you understand?" -- pick something interesting and teach.\n- Track mistakes -- if the same error happens twice, flag the pattern.\n- Be natural, warm, responsive. This is a real-time voice conversation.\n- Naturally reuse vocabulary from previous conversations — don't announce reviews, just weave old words into new topics.`
+    name: 'Khalid', voice: 'Orus', flag: '&#127480;&#127462;',
+    personality: 'a warm and patient Arabic conversation partner',
+    langRules: 'Speak IN ARABIC (Modern Standard Arabic, with dialect awareness). Break down trilateral root patterns — Arabic\'s root system is a superpower for learning vocabulary. For heritage speakers: acknowledge what they know, build on it.'
   },
   russian: {
-    name: 'Dmitry', voice: 'Orus',
-    system: (u) => `You are Dmitry, a patient Russian conversation partner.\n\nAbout the student:\n- Name: ${u.name}\n- Level: ${u.level}\n\nCore rules:\n- Speak IN RUSSIAN. Include English translation ONLY for new vocabulary words.\n- When correcting grammar, briefly explain in English, then give the correct Russian.\n- Use simple sentences for beginners -- subject + verb + object.\n- ALWAYS break down etymology of new words.\n- Keep responses 1-2 sentences in Russian.\n- Quote Dostoevsky when relevant and explain key words.\n- Be proactive -- teach something with every response.\n- Naturally reuse vocabulary from previous conversations — don't announce reviews, just weave old words into new topics.`
+    name: 'Dmitry', voice: 'Orus', flag: '&#127479;&#127482;',
+    personality: 'a patient Russian conversation partner',
+    langRules: 'Speak IN RUSSIAN. Include English translation ONLY for new vocabulary words. Break down etymology of new words. Use simple sentences for beginners.'
   },
   japanese: {
-    name: 'Keita', voice: 'Orus',
-    system: (u) => `You are Keita, a casual Japanese conversation partner.\n\nAbout the student:\n- Name: ${u.name}\n- Level: ${u.level}\n- The student is a BEGINNER. They will mostly speak in English or very broken Japanese.\n\nCore rules:\n- You must understand BOTH English and Japanese input. Always respond regardless of what language they speak.\n- Speak in simple Japanese. Keep it SHORT — 1 sentence max in Japanese per turn.\n- After your Japanese sentence, give a BRIEF English meaning (5-10 words max, not a full translation). Example: "元気？ ...that means 'how are you?'"\n- Do NOT repeat yourself. Say it once in Japanese, brief English hint, move on.\n- Teach whole PHRASES first, not individual words. Give them something they can USE immediately.\n- Teaching order: Sound first → Meaning → Usage in context → Kanji breakdown ONLY if they ask or say "breakdown"\n- Use casual speech (not keigo) to match natural conversation.\n- Do NOT dump vocabulary lists. Introduce ONE new phrase per turn, max.\n- If they say "breakdown" or ask how a word works, THEN go deep: pronunciation, meaning, kanji components, etymology.\n- Be proactive — ask them simple questions they can answer with words they just learned.\n- If they seem stuck, give them a phrase to repeat and use.\n- Connect to topics the student is interested in. Ask what they like and reference it naturally.\n- Naturally reuse vocabulary from previous conversations — don't announce reviews, just weave old words into new topics.`
+    name: 'Keita', voice: 'Orus', flag: '&#127471;&#127477;',
+    personality: 'a casual Japanese conversation partner',
+    langRules: 'Speak in simple Japanese. Keep it SHORT — 1-2 sentences in Japanese per turn. After your Japanese, give a BRIEF English hint (not full translation). Teach whole phrases, not isolated words. Use casual speech (not keigo). Teaching order: Sound → Meaning → Usage in context.'
+  },
+  korean: {
+    name: 'Minji', voice: 'Kore', flag: '&#127472;&#127479;',
+    personality: 'a friendly Korean conversation partner',
+    langRules: 'Speak IN KOREAN. Use polite-casual speech (해요체) for beginners, progress to casual (반말) as they advance. Break down Hangul components for new words. Reference K-drama and K-pop culture naturally when relevant.'
+  },
+  french: {
+    name: 'Camille', voice: 'Aoede', flag: '&#127467;&#127479;',
+    personality: 'a warm French conversation partner from Paris',
+    langRules: 'Speak IN FRENCH. Use standard Parisian French. Explain liaison and pronunciation rules when they come up naturally. Point out false cognates with English. Be encouraging about accent — every attempt counts.'
+  },
+  english: {
+    name: 'Emma', voice: 'Aoede', flag: '&#127468;&#127463;',
+    personality: 'a friendly English conversation partner',
+    langRules: 'Speak IN ENGLISH. Adjust speed and vocabulary to the student\'s level. Explain phrasal verbs and idioms — these are the hardest part for learners. Point out common pronunciation traps. Be aware the student may speak with an accent — focus on being understood, not sounding native.'
+  },
+  chinese: {
+    name: 'Wei', voice: 'Orus', flag: '&#127464;&#127475;',
+    personality: 'a patient Mandarin Chinese conversation partner',
+    langRules: 'Speak IN MANDARIN CHINESE. Tones are critical — correct tone errors gently but consistently. Break down characters into radicals and components. Use pinyin when introducing new words. Start with common measure words and sentence patterns.'
   }
 };
+
+// ── Lesson Engine ──
+// Builds the system prompt from all available data
+
+function getUserLevel(lang) {
+  const profile = getLearningProfile();
+  const lp = profile[lang];
+  if (!lp || !lp.currentLevel) return 'newcomer';
+  return lp.currentLevel;
+}
+
+function getUserUnit(lang) {
+  const profile = getLearningProfile();
+  const lp = profile[lang];
+  if (!lp || typeof lp.currentUnit !== 'number') return 0;
+  return lp.currentUnit;
+}
+
+function getMediaPreferences(lang) {
+  try {
+    return JSON.parse(localStorage.getItem('watson_media_' + lang) || '[]');
+  } catch (e) { return []; }
+}
+
+function setMediaPreferences(lang, prefs) {
+  localStorage.setItem('watson_media_' + lang, JSON.stringify(prefs));
+  if (window.syncToFirebase) syncToFirebase();
+}
+
+function getSessionTopic() {
+  return sessionTopic || '';
+}
+
+let sessionTopic = '';
+
+function buildLessonPrompt(lang, settings) {
+  const langConfig = LANGS[lang];
+  const level = getUserLevel(lang);
+  const unitIdx = getUserUnit(lang);
+  const curriculum = CURRICULUM[level];
+  const unit = curriculum ? curriculum.units[Math.min(unitIdx, curriculum.units.length - 1)] : null;
+
+  // Base tutor personality
+  let prompt = `You are ${langConfig.name}, ${langConfig.personality}.\n\n`;
+  prompt += `About the student:\n- Name: ${settings.name}\n\n`;
+
+  // Core conversation rules (same for all languages)
+  prompt += `Core rules:\n`;
+  prompt += `- ${langConfig.langRules}\n`;
+  prompt += `- Keep responses 2-4 sentences. Conversation, not lecture.\n`;
+  prompt += `- Be PROACTIVE: teach vocabulary and share etymology naturally.\n`;
+  prompt += `- Track mistakes — if the same error happens twice, flag the pattern.\n`;
+  prompt += `- Be natural, warm, responsive. This is a real-time voice conversation.\n`;
+  prompt += `- Naturally reuse vocabulary from previous conversations.\n\n`;
+
+  // Current curriculum context
+  if (unit) {
+    prompt += `CURRENT FOCUS: The student is at the "${curriculum.label}" level.\n`;
+    prompt += `This session's topic area: ${unit.topic}\n`;
+    prompt += `Key vocabulary to weave in: ${unit.vocab}\n`;
+    prompt += `Goal: By session end, the student should be able to: ${unit.canDo}\n\n`;
+  }
+
+  // Mode: guided lesson vs free talk
+  const topic = getSessionTopic();
+  if (topic) {
+    prompt += `SESSION MODE: The student wants to talk about: "${topic}". Have a natural conversation about this. Still weave in vocabulary from the current focus area where it fits naturally, and still correct mistakes.\n\n`;
+  } else if (sessionMode === 'freeform') {
+    prompt += `SESSION MODE: Freeform conversation. Follow the student's lead. Still correct mistakes and teach proactively.\n\n`;
+  } else {
+    prompt += `SESSION MODE: Guided session. Create a natural conversation around the topic area above. Do NOT announce it as a lesson — make it feel like a real situation. If they do well, introduce a complication or surprise to stretch them.\n\n`;
+  }
+
+  // Media preferences
+  const media = getMediaPreferences(lang);
+  if (media.length > 0) {
+    prompt += `STUDENT'S INTERESTS: They enjoy ${media.join(', ')}. Reference these naturally — use vocabulary and scenarios that connect to what they watch/listen to.\n\n`;
+  }
+
+  // SRS data: struggled words
+  const srsCards = JSON.parse(localStorage.getItem('watson_srs_cards') || '[]');
+  const forgotWords = srsCards
+    .filter(c => c.lang === lang && c.lapses > 0)
+    .sort((a, b) => b.lapses - a.lapses)
+    .slice(0, 10)
+    .map(c => `${c.word} (${c.meaning})`)
+    .join(', ');
+  if (forgotWords) {
+    prompt += `WORDS THE STUDENT STRUGGLES WITH (weave these in naturally — do NOT announce you're reviewing): ${forgotWords}\n\n`;
+  }
+
+  // Mastered words
+  const masteredWords = srsCards
+    .filter(c => c.lang === lang && c.stability > 10 && c.lapses === 0)
+    .slice(0, 15)
+    .map(c => c.word)
+    .join(', ');
+  if (masteredWords) {
+    prompt += `WORDS THE STUDENT KNOWS WELL (use these freely, build on them): ${masteredWords}\n\n`;
+  }
+
+  // Gap analysis from previous sessions
+  const gapAnalysis = localStorage.getItem('watson_srs_gap_' + lang);
+  if (gapAnalysis) {
+    prompt += `PATTERN ANALYSIS FROM PREVIOUS SESSIONS: ${gapAnalysis}\n\n`;
+  }
+
+  // Cumulative learning insights
+  const lpData = getLearningProfile();
+  const lp = lpData[lang];
+  if (lp) {
+    if (lp.weeklyInsight) prompt += `WEEKLY INSIGHT: ${lp.weeklyInsight}\n\n`;
+    if (lp.monthlyInsight) prompt += `MONTHLY ASSESSMENT: ${lp.monthlyInsight}\n\n`;
+  }
+
+  return prompt;
+}
 
 // ── Settings ──
 function getSettings() {
@@ -3426,6 +3712,9 @@ function openSettings() {
   document.getElementById('nameInput').value = s.name;
   document.getElementById('levelInput').value = s.level;
   document.getElementById('modeInput').value = localStorage.getItem('watson_default_mode') || 'guided';
+  // Load media preferences for currently selected language
+  const mediaPrefs = selectedLang ? getMediaPreferences(selectedLang) : [];
+  document.getElementById('mediaInput').value = mediaPrefs.join(', ');
   document.getElementById('settingsModal').classList.add('active');
   if (window.updateSyncUI) window.updateSyncUI();
 }
@@ -3440,6 +3729,12 @@ function saveSettings() {
   if (key) localStorage.setItem('watson_api_key', key);
   if (name) localStorage.setItem('watson_name', name);
   localStorage.setItem('watson_level', level);
+  // Save media preferences
+  const mediaRaw = document.getElementById('mediaInput').value;
+  if (selectedLang && mediaRaw) {
+    const mediaList = mediaRaw.split(',').map(s => s.trim()).filter(s => s);
+    setMediaPreferences(selectedLang, mediaList);
+  }
   closeSettings();
   checkReady();
   if (window.syncToFirebase) syncToFirebase();
@@ -3456,6 +3751,22 @@ function selectLang(el) {
   selectedLang = el.dataset.lang;
   checkReady();
   if (selectedLang === 'japanese') initKuroshiro();
+  // Show topic selector
+  const ts = document.getElementById('topicSelector');
+  if (ts) ts.style.display = '';
+  // Clear previous topic
+  sessionTopic = '';
+  document.querySelectorAll('.topic-chip').forEach(c => c.classList.remove('selected'));
+  const input = document.getElementById('topicInput');
+  if (input) input.value = '';
+}
+
+function setTopicChip(el) {
+  document.querySelectorAll('.topic-chip').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  sessionTopic = el.textContent;
+  const input = document.getElementById('topicInput');
+  if (input) input.value = '';
 }
 
 // ── Audio Helpers ──
@@ -3495,6 +3806,12 @@ async function startSession() {
   const settings = getSettings();
   if (!settings.apiKey || !selectedLang) return;
 
+  // Read topic from input if typed (overrides chip selection)
+  const topicInput = document.getElementById('topicInput');
+  if (topicInput && topicInput.value.trim()) {
+    sessionTopic = topicInput.value.trim();
+  }
+
   // Load saved mode preference for this language
   const savedMode = localStorage.getItem('watson_mode_' + selectedLang);
   if (savedMode) setMode(savedMode);
@@ -3505,51 +3822,8 @@ async function startSession() {
   clearPlayback();
 
   const lang = LANGS[selectedLang];
-  const modeInstruction = sessionMode === 'freeform'
-    ? '\n\nMODE: Freeform conversation. Follow the student\'s lead completely. No lesson plan — just natural conversation. Still correct mistakes and teach proactively.'
-    : '\n\nMODE: Guided session. Steer the conversation toward topics that practice the student\'s weak points. Focus on their most common errors. Do NOT announce it as a lesson — keep it natural.';
-  // Build SRS feedback — words the student struggled with
-  let srsFeedback = '';
-  const srsCards = JSON.parse(localStorage.getItem('watson_srs_cards') || '[]');
-  const forgotWords = srsCards
-    .filter(c => c.lang === selectedLang && c.lapses > 0)
-    .sort((a, b) => b.lapses - a.lapses)
-    .slice(0, 10)
-    .map(c => `${c.word} (${c.meaning})`)
-    .join(', ');
-  if (forgotWords) {
-    srsFeedback += `\n\nWORDS THE STUDENT STRUGGLES WITH (naturally weave these into conversation — do NOT announce you're reviewing): ${forgotWords}`;
-  }
-
-  // Add gap analysis from previous sessions
-  const gapAnalysis = localStorage.getItem('watson_srs_gap_' + selectedLang);
-  if (gapAnalysis) {
-    srsFeedback += `\n\nPATTERN ANALYSIS FROM PREVIOUS SESSIONS: ${gapAnalysis}`;
-  }
-
-  // Add cumulative learning insights if available
-  const lpData = getLearningProfile();
-  const lp = lpData[selectedLang];
-  if (lp) {
-    if (lp.weeklyInsight) {
-      srsFeedback += `\n\nWEEKLY LEARNING INSIGHT: ${lp.weeklyInsight}`;
-    }
-    if (lp.monthlyInsight) {
-      srsFeedback += `\n\nMONTHLY ASSESSMENT: ${lp.monthlyInsight}`;
-    }
-  }
-
-  // Add mastered words so tutor can build on them
-  const masteredWords = srsCards
-    .filter(c => c.lang === selectedLang && c.stability > 10 && c.lapses === 0)
-    .slice(0, 15)
-    .map(c => c.word)
-    .join(', ');
-  if (masteredWords) {
-    srsFeedback += `\n\nWORDS THE STUDENT KNOWS WELL (use these freely, build on them): ${masteredWords}`;
-  }
-
-  const systemPrompt = lang.system({ name: settings.name, level: settings.level }) + modeInstruction + srsFeedback;
+  // Build adaptive system prompt from lesson engine
+  const systemPrompt = buildLessonPrompt(selectedLang, settings);
   const url = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${settings.apiKey}`;
   ws = new WebSocket(url);
   transcripts = [];
@@ -4128,7 +4402,8 @@ function renderProgress() {
   html += '</div>';
 
   // ── Per-language Journey Map + CEFR bars ──
-  const langNames = { spanish: 'Spanish', arabic: 'Arabic', russian: 'Russian', japanese: 'Japanese' };
+  const langNames = {};
+  for (const [k, v] of Object.entries(LANGS)) langNames[k] = k.charAt(0).toUpperCase() + k.slice(1);
   const cefrLevels = { 'pre-A1': 5, 'A1': 15, 'A1+': 22, 'A2': 35, 'A2+': 45, 'B1': 55, 'B1+': 65, 'B2': 80, 'C1': 92, 'C2': 100 };
   const cefrJourney = ['pre-A1', 'A1', 'A1+', 'A2', 'A2+', 'B1', 'B1+', 'B2'];
 
@@ -4301,6 +4576,26 @@ Example output:
 1. "vocab": array of vocabulary items, each with: word, meaning (English). Only include words that were taught or are important for a learner.
 2. "pronunciation": null (not needed for Spanish).
 3. "breakdown": a WORD-BY-WORD literal translation. Example: "la(the) casa(house) blanca(white) es(is) grande(big)" — show how Spanish maps to English literally, word by word.`,
+
+    korean: `Analyze this Korean tutor's response. Return JSON with:
+1. "vocab": array of vocabulary items, each with: word (Korean), romaji (romanization), meaning (English).
+2. "pronunciation": the full sentence romanized into Latin letters.
+3. "breakdown": a WORD-BY-WORD literal translation with particles labeled. Example: "나는(I+topic) 학생(student) 이에요(am)"`,
+
+    french: `Analyze this French tutor's response. Return JSON with:
+1. "vocab": array of vocabulary items, each with: word, meaning (English). Only include words important for a learner.
+2. "pronunciation": null (not needed for French).
+3. "breakdown": a WORD-BY-WORD literal translation. Example: "je(I) suis(am) content(happy) de(to) te(you) voir(see)"`,
+
+    english: `Analyze this English tutor's response. Return JSON with:
+1. "vocab": array of vocabulary items, each with: word, meaning (translation to the student's native language or simple English definition). Focus on phrasal verbs, idioms, and advanced vocabulary.
+2. "pronunciation": null.
+3. "breakdown": null.`,
+
+    chinese: `Analyze this Chinese tutor's response. Return JSON with:
+1. "vocab": array of vocabulary items, each with: word (characters), romaji (pinyin with tones), meaning (English).
+2. "pronunciation": the full sentence in pinyin with tone marks.
+3. "breakdown": a WORD-BY-WORD literal translation. Example: "我(I) 是(am) 学生(student)"`,
   };
 
   const prompt = `${langPrompts[lang] || langPrompts.spanish}
@@ -4514,7 +4809,7 @@ function updateWatsonObservation() {
 
   // Total words across all languages
   let totalWords = 0;
-  for (const lang of ['spanish', 'arabic', 'russian', 'japanese']) {
+  for (const lang of Object.keys(LANGS)) {
     totalWords += (JSON.parse(localStorage.getItem('watson_cheat_' + lang) || '[]')).length;
   }
 
@@ -4557,7 +4852,7 @@ function updateWatsonObservation() {
 
 // ── Gamification: Update Language Cards ──
 function updateLangCards() {
-  for (const lang of ['spanish', 'arabic', 'russian', 'japanese']) {
+  for (const lang of Object.keys(LANGS)) {
     const rankData = getRankForLang(lang);
     const rankEl = document.getElementById('rank-' + lang);
     const sessEl = document.getElementById('sessions-' + lang);
@@ -4602,7 +4897,7 @@ function getAchievements() {
 
   // Total words
   let totalWords = 0;
-  for (const lang of ['spanish', 'arabic', 'russian', 'japanese']) {
+  for (const lang of Object.keys(LANGS)) {
     totalWords += (JSON.parse(localStorage.getItem('watson_cheat_' + lang) || '[]')).length;
   }
 
@@ -4711,7 +5006,7 @@ function renderEvidenceBoard() {
 
 // ── Gamification: Elementary Ending ──
 function checkElementaryRank() {
-  for (const lang of ['spanish', 'arabic', 'russian', 'japanese']) {
+  for (const lang of Object.keys(LANGS)) {
     const rankData = getRankForLang(lang);
     if (rankData && rankData.rank.name === 'Elementary') {
       const shownKey = 'watson_elementary_shown_' + lang;
@@ -4820,12 +5115,17 @@ function updateCaseBoard() {
 
   // TODO: Pull from watson-voice-context.json when connected to terminal pipeline
   // Build cases from language-specific common weak points + actual session data
-  const langFlags = { spanish: '&#127466;&#127480;', japanese: '&#127471;&#127477;', arabic: '&#127480;&#127462;', russian: '&#127479;&#127482;' };
+  const langFlags = {};
+  for (const [k, v] of Object.entries(LANGS)) langFlags[k] = v.flag;
   const commonWeakPoints = {
     spanish: ['ser vs estar', 'preterite endings', 'por vs para', 'subjunctive mood'],
     japanese: ['particle usage', 'verb conjugation', 'kanji reading', 'pitch accent'],
     arabic: ['root patterns', 'verb forms', 'case endings'],
     russian: ['case system', 'verb aspects', 'pronunciation'],
+    korean: ['particles', 'verb conjugation', 'honorific levels', 'word order'],
+    french: ['gendered nouns', 'verb conjugation', 'liaison pronunciation', 'subjunctive'],
+    english: ['phrasal verbs', 'articles', 'prepositions', 'pronunciation'],
+    chinese: ['tones', 'measure words', 'sentence structure', 'character recognition'],
   };
 
   const sessionsByLang = records.reduce((acc, r) => { (acc[r.language] = acc[r.language] || []).push(r); return acc; }, {});
@@ -5041,7 +5341,10 @@ function initLearningProfile(lang) {
     lastMonthlyReview: null,
     weeklyInsight: '',
     monthlyInsight: '',
-    mnemonicStyle: ''
+    mnemonicStyle: '',
+    currentLevel: 'newcomer',
+    currentUnit: 0,
+    skillsMastered: [],
   };
 }
 
