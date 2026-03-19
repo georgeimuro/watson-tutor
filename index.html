@@ -3697,18 +3697,14 @@
     <span class="tab-bar-icon">&#127968;</span>
     <span class="tab-bar-label">Home</span>
   </button>
-  <button class="tab-bar-item" onclick="switchTab('quest')" id="tab-quest">
-    <span class="tab-bar-icon">&#128506;</span>
-    <span class="tab-bar-label">Quest</span>
-  </button>
   <button class="tab-bar-item" onclick="switchTab('cards')" id="tab-cards" style="position:relative;">
     <span class="tab-bar-icon">&#128451;</span>
     <span class="tab-bar-label">Cards</span>
     <span class="tab-bar-badge" id="tabCardsBadge" style="display:none;"></span>
   </button>
-  <button class="tab-bar-item" onclick="switchTab('stats')" id="tab-stats">
-    <span class="tab-bar-icon">&#128200;</span>
-    <span class="tab-bar-label">Stats</span>
+  <button class="tab-bar-item" onclick="switchTab('news')" id="tab-news">
+    <span class="tab-bar-icon">&#128240;</span>
+    <span class="tab-bar-label">News</span>
   </button>
   <button class="tab-bar-item" onclick="switchTab('more')" id="tab-more">
     <span class="tab-bar-icon">&#9881;</span>
@@ -3777,14 +3773,11 @@ function switchTab(tab) {
     case 'home':
       goHome();
       break;
-    case 'quest':
-      // For now, show progress — will become the path map
-      showProgress();
-      break;
     case 'cards':
       showSrsReview();
       break;
-    case 'stats':
+    case 'news':
+      // TODO: The Strand — for now show progress
       showProgress();
       break;
     case 'more':
@@ -4425,10 +4418,10 @@ function buildCaseboardHome() {
   // Watson's Brief
   buildWatsonBrief();
 
-  // Talk button
+  // Talk button — always visible
   const hasKey = !!getSettings().apiKey;
   document.getElementById('cbTalkBtn').textContent = `Talk to ${lang.name}`;
-  document.getElementById('cbTalkBtn').style.display = hasKey ? '' : 'none';
+  document.getElementById('cbTalkBtn').disabled = !hasKey;
   document.getElementById('apiKeyHome').style.display = hasKey ? 'none' : '';
 
   // Coming Up
@@ -4515,13 +4508,33 @@ function buildComingUp() {
   const curriculum = CURRICULUM[level];
   if (!curriculum) { container.innerHTML = ''; return; }
 
+  // Show completed units
+  const completed = curriculum.units.slice(0, unitIdx);
+  const current = curriculum.units[unitIdx];
   const upcoming = curriculum.units.slice(unitIdx + 1);
   const nextLevel = LEVEL_ORDER[LEVEL_ORDER.indexOf(level) + 1];
   const nextCurriculum = nextLevel ? CURRICULUM[nextLevel] : null;
 
-  if (upcoming.length === 0 && !nextCurriculum) { container.innerHTML = ''; return; }
+  let html = '';
 
-  let html = '<div style="font-family:var(--mono);font-size:10px;color:var(--text3);letter-spacing:1px;margin-bottom:8px;">COMING UP</div>';
+  // Completed units (solved)
+  if (completed.length > 0) {
+    html += '<div style="font-family:var(--mono);font-size:10px;color:var(--text3);letter-spacing:1px;margin-bottom:8px;">COVERED</div>';
+    completed.forEach(u => {
+      html += `<div class="case-card solved"><div class="case-title">✦ ${u.topic}</div></div>`;
+    });
+  }
+
+  // Current unit (active)
+  if (current) {
+    html += '<div style="font-family:var(--mono);font-size:10px;color:var(--text3);letter-spacing:1px;margin:16px 0 8px;">CURRENT FOCUS</div>';
+    html += `<div class="case-card" style="border-left-color:var(--amber);"><div class="case-title">◉ ${current.topic}</div><div class="case-detail">${current.canDo}</div></div>`;
+  }
+
+  // Upcoming
+  if (upcoming.length > 0 || nextCurriculum) {
+    html += '<div style="font-family:var(--mono);font-size:10px;color:var(--text3);letter-spacing:1px;margin:16px 0 8px;">COMING UP</div>';
+  }
 
   upcoming.forEach(u => {
     html += `<div class="case-card coming"><div class="case-title">${u.topic}</div></div>`;
