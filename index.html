@@ -1523,6 +1523,164 @@
   .topic-chip:hover { border-color: var(--brass); color: var(--cream); }
   .topic-chip.selected { border-color: var(--amber); color: var(--amber); background: var(--amber-soft); }
 
+  /* ── Onboarding Screens ── */
+  .onboard-screen {
+    flex: 1;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    gap: 16px;
+    overflow-y: auto;
+  }
+  .onboard-screen.active { display: flex; }
+  .onboard-screen h2 {
+    font-family: var(--heading);
+    font-size: 28px;
+    color: var(--cream);
+    text-align: center;
+  }
+  .onboard-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+    max-width: 360px;
+  }
+  .onboard-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 18px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface2);
+    color: var(--text);
+    font-family: var(--body);
+    font-size: 15px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .onboard-item:active { transform: scale(0.97); }
+  .onboard-item:hover { border-color: var(--brass); }
+  .onboard-item.selected { border-color: var(--amber); background: var(--amber-soft); }
+  .onboard-item .flag { font-size: 22px; }
+  .onboard-item .check { margin-left: auto; color: var(--amber); display: none; }
+  .onboard-item.selected .check { display: inline; }
+  .onboard-continue {
+    margin-top: 12px;
+    width: 100%;
+    max-width: 360px;
+  }
+
+  /* ── Ready Screen ── */
+  .ready-screen {
+    flex: 1;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    gap: 20px;
+  }
+  .ready-screen.active { display: flex; }
+  .ready-greeting {
+    font-family: var(--heading);
+    font-size: 36px;
+    color: var(--cream);
+    text-align: center;
+  }
+  .ready-tutor {
+    font-family: var(--body);
+    font-size: 15px;
+    color: var(--text2);
+  }
+  .ready-progress {
+    width: 100%;
+    max-width: 300px;
+    text-align: center;
+  }
+  .ready-progress-bar {
+    width: 100%;
+    height: 6px;
+    background: var(--surface3);
+    border-radius: 3px;
+    overflow: hidden;
+    margin: 8px 0;
+  }
+  .ready-progress-fill {
+    height: 100%;
+    background: var(--amber);
+    border-radius: 3px;
+    transition: width 0.3s;
+  }
+  .ready-progress-label {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text3);
+  }
+  .ready-topic-toggle {
+    font-size: 13px;
+    color: var(--text3);
+    cursor: pointer;
+    border: none;
+    background: none;
+    font-family: var(--body);
+    padding: 8px;
+  }
+  .ready-topic-toggle:hover { color: var(--amber); }
+  .ready-topic-area {
+    display: none;
+    width: 100%;
+    max-width: 360px;
+    text-align: center;
+  }
+  .ready-topic-area.visible { display: block; }
+  .ready-back {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    background: none;
+    border: none;
+    color: var(--text2);
+    font-size: 14px;
+    cursor: pointer;
+    font-family: var(--body);
+    padding: 8px;
+  }
+  .ready-back:hover { color: var(--amber); }
+  .explore-link {
+    font-size: 13px;
+    color: var(--text3);
+    cursor: pointer;
+    border: none;
+    background: none;
+    font-family: var(--body);
+    padding: 8px;
+  }
+  .explore-link:hover { color: var(--amber); }
+  .api-key-inline {
+    width: 100%;
+    max-width: 360px;
+    text-align: center;
+  }
+  .api-key-inline input {
+    width: 100%;
+    padding: 10px 14px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 13px;
+    margin: 8px 0;
+  }
+  .api-key-inline p {
+    font-size: 11px;
+    color: var(--text3);
+  }
+
   .case-board-mobile-toggle {
     display: none;
     background: none;
@@ -3152,16 +3310,59 @@
   </div>
 </div>
 
-<!-- Setup Screen -->
+<!-- Onboarding: Native Language -->
+<div class="onboard-screen" id="onboardNative">
+  <h2>What language<br>do you speak?</h2>
+  <div class="onboard-list" id="nativeLangList"></div>
+</div>
+
+<!-- Onboarding: Pick Languages to Learn -->
+<div class="onboard-screen" id="onboardPick">
+  <h2>What would you<br>like to learn?</h2>
+  <div class="onboard-list" id="pickLangList"></div>
+  <button class="btn btn-primary onboard-continue" id="onboardContinue" onclick="finishOnboarding()" disabled>Continue</button>
+</div>
+
+<!-- Ready Screen (between home and session) -->
+<div class="ready-screen" id="readyScreen" style="position:relative;">
+  <button class="ready-back" onclick="backToHome()">&larr; Back</button>
+  <div class="ready-greeting" id="readyGreeting"></div>
+  <div class="ready-tutor" id="readyTutor"></div>
+  <div class="ready-progress" id="readyProgress">
+    <div class="ready-progress-bar"><div class="ready-progress-fill" id="readyProgressFill" style="width:0%"></div></div>
+    <div class="ready-progress-label" id="readyProgressLabel"></div>
+  </div>
+  <button class="btn btn-primary" id="readyStartBtn" onclick="startSession()" style="width:100%;max-width:300px;">Begin Session</button>
+  <button class="ready-topic-toggle" onclick="toggleReadyTopic()">Have a topic in mind?</button>
+  <div class="ready-topic-area" id="readyTopicArea">
+    <div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-bottom:10px;">
+      <button class="topic-chip" onclick="setTopicChip(this)">My day</button>
+      <button class="topic-chip" onclick="setTopicChip(this)">Hobbies</button>
+      <button class="topic-chip" onclick="setTopicChip(this)">Food</button>
+      <button class="topic-chip" onclick="setTopicChip(this)">Travel</button>
+      <button class="topic-chip" onclick="setTopicChip(this)">Music</button>
+      <button class="topic-chip" onclick="setTopicChip(this)">Movies</button>
+    </div>
+    <input type="text" id="topicInput" placeholder="Or type anything..."
+      style="width:100%;padding:10px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--body);font-size:13px;"
+      onkeydown="if(event.key==='Enter'){startSession();}">
+  </div>
+  <div class="api-key-inline" id="apiKeyInline" style="display:none;">
+    <p style="color:var(--text2);font-size:13px;">Enter your Gemini API key to start</p>
+    <input type="password" id="inlineApiKey" placeholder="AIza...">
+    <p>Free from <a href="https://aistudio.google.com/apikey" target="_blank" style="color:var(--amber);">aistudio.google.com/apikey</a></p>
+    <button class="btn btn-primary" onclick="saveInlineApiKey()" style="width:100%;margin-top:8px;">Save Key</button>
+  </div>
+</div>
+
+<!-- Setup Screen (Home) -->
 <div class="setup-screen" id="setupScreen">
   <div class="setup-title" id="setupTitle">
     <h2>At your service,<br><em>shall we begin?</em></h2>
-    <p>Real-time conversation practice with live corrections and a full debrief.</p>
+    <p>Tap a language to start.</p>
   </div>
 
   <div class="watson-observation" id="watsonObservation" style="display:none;"></div>
-
-  <div class="divider">select your case</div>
 
   <div class="lang-grid" id="langGrid">
     <div class="lang-card" data-lang="spanish" onclick="selectLang(this)">
@@ -3222,28 +3423,13 @@
     </div>
   </div>
 
-  <!-- Topic Selector (appears after language is selected) -->
-  <div id="topicSelector" style="display:none; width:100%; max-width:560px;">
-    <div class="divider">or pick a topic</div>
-    <div style="display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin-bottom:12px;">
-      <button class="topic-chip" onclick="setTopicChip(this)">My day</button>
-      <button class="topic-chip" onclick="setTopicChip(this)">Hobbies</button>
-      <button class="topic-chip" onclick="setTopicChip(this)">Food</button>
-      <button class="topic-chip" onclick="setTopicChip(this)">Travel</button>
-      <button class="topic-chip" onclick="setTopicChip(this)">Music</button>
-      <button class="topic-chip" onclick="setTopicChip(this)">Sports</button>
-      <button class="topic-chip" onclick="setTopicChip(this)">Movies</button>
-      <button class="topic-chip" onclick="setTopicChip(this)">Quiz me</button>
-    </div>
-    <input type="text" id="topicInput" placeholder="Or type anything you want to talk about..."
-      style="width:100%; padding:10px 14px; background:var(--surface2); border:1px solid var(--border); border-radius:6px; color:var(--text); font-family:var(--body); font-size:13px;"
-      onkeydown="if(event.key==='Enter'){startSession();}">
-    <p style="font-size:11px; color:var(--text3); margin-top:6px; text-align:center;">Leave empty for a guided lesson based on your level</p>
-  </div>
+  <button class="explore-link" onclick="showOnboardPick()">Explore more languages</button>
 
-  <button class="btn btn-primary" id="startBtn" onclick="startSession()" disabled>
-    Begin Session
-  </button>
+  <div style="width:100%;max-width:560px;">
+    <button class="btn btn-secondary" id="reviewHomeBtn" onclick="showSrsReview()" style="width:100%;display:none;">
+      Review Cards <span id="reviewHomeDue"></span>
+    </button>
+  </div>
 
 </div>
 
@@ -3740,25 +3926,16 @@ function saveSettings() {
   if (window.syncToFirebase) syncToFirebase();
 }
 function checkReady() {
-  const s = getSettings();
-  document.getElementById('startBtn').disabled = !(s.apiKey && selectedLang);
+  // Legacy — start button now lives on ready screen
+  const startBtn = document.getElementById('startBtn');
+  if (startBtn) startBtn.disabled = !(getSettings().apiKey && selectedLang);
 }
 
 // ── Language Selection ──
 function selectLang(el) {
-  document.querySelectorAll('.lang-card').forEach(c => c.classList.remove('selected'));
-  el.classList.add('selected');
   selectedLang = el.dataset.lang;
-  checkReady();
   if (selectedLang === 'japanese') initKuroshiro();
-  // Show topic selector
-  const ts = document.getElementById('topicSelector');
-  if (ts) ts.style.display = '';
-  // Clear previous topic
-  sessionTopic = '';
-  document.querySelectorAll('.topic-chip').forEach(c => c.classList.remove('selected'));
-  const input = document.getElementById('topicInput');
-  if (input) input.value = '';
+  showReadyScreen();
 }
 
 function setTopicChip(el) {
@@ -3767,6 +3944,165 @@ function setTopicChip(el) {
   sessionTopic = el.textContent;
   const input = document.getElementById('topicInput');
   if (input) input.value = '';
+}
+
+// ── Onboarding ──
+const NATIVE_LANGS = [
+  { code: 'en', label: 'English', flag: '🇬🇧' },
+  { code: 'es', label: 'Español', flag: '🇪🇸' },
+  { code: 'zh', label: '中文', flag: '🇨🇳' },
+  { code: 'ko', label: '한국어', flag: '🇰🇷' },
+  { code: 'ar', label: 'العربية', flag: '🇸🇦' },
+  { code: 'fr', label: 'Français', flag: '🇫🇷' },
+  { code: 'ja', label: '日本語', flag: '🇯🇵' },
+  { code: 'ru', label: 'Русский', flag: '🇷🇺' },
+];
+
+function getNativeLang() { return localStorage.getItem('watson_native_lang') || ''; }
+function getSelectedLangs() {
+  try { return JSON.parse(localStorage.getItem('watson_selected_langs') || '[]'); }
+  catch (e) { return []; }
+}
+
+function showOnboarding() {
+  document.getElementById('setupScreen').style.display = 'none';
+  document.getElementById('readyScreen').classList.remove('active');
+  document.getElementById('onboardNative').classList.add('active');
+  // Build native lang list
+  const list = document.getElementById('nativeLangList');
+  list.innerHTML = NATIVE_LANGS.map(l =>
+    `<div class="onboard-item" onclick="pickNativeLang(this, '${l.code}')">
+      <span class="flag">${l.flag}</span> ${l.label}
+    </div>`
+  ).join('');
+}
+
+function pickNativeLang(el, code) {
+  document.querySelectorAll('#nativeLangList .onboard-item').forEach(i => i.classList.remove('selected'));
+  el.classList.add('selected');
+  localStorage.setItem('watson_native_lang', code);
+  // Auto-advance after a short delay
+  setTimeout(() => {
+    document.getElementById('onboardNative').classList.remove('active');
+    showOnboardPick();
+  }, 300);
+}
+
+function showOnboardPick() {
+  document.getElementById('setupScreen').style.display = 'none';
+  document.getElementById('onboardPick').classList.add('active');
+  const nativeLang = getNativeLang();
+  const list = document.getElementById('pickLangList');
+  const currentSelected = getSelectedLangs();
+  list.innerHTML = Object.entries(LANGS)
+    .filter(([code]) => {
+      // Don't show their native language as a learning option
+      const nativeMap = { en: 'english', es: 'spanish', zh: 'chinese', ko: 'korean', ar: 'arabic', fr: 'french', ja: 'japanese', ru: 'russian' };
+      return code !== nativeMap[nativeLang];
+    })
+    .map(([code, lang]) =>
+      `<div class="onboard-item ${currentSelected.includes(code) ? 'selected' : ''}" onclick="togglePickLang(this, '${code}')">
+        <span class="flag">${lang.flag}</span> ${code.charAt(0).toUpperCase() + code.slice(1)}
+        <span class="check">✓</span>
+      </div>`
+    ).join('');
+  updateOnboardContinue();
+}
+
+function togglePickLang(el, code) {
+  el.classList.toggle('selected');
+  let langs = [];
+  document.querySelectorAll('#pickLangList .onboard-item.selected').forEach(i => {
+    const c = i.querySelector('.flag').parentElement.getAttribute('onclick').match(/'(\w+)'/)[1];
+    langs.push(c);
+  });
+  localStorage.setItem('watson_selected_langs', JSON.stringify(langs));
+  updateOnboardContinue();
+}
+
+function updateOnboardContinue() {
+  const langs = getSelectedLangs();
+  document.getElementById('onboardContinue').disabled = langs.length === 0;
+}
+
+function finishOnboarding() {
+  document.getElementById('onboardPick').classList.remove('active');
+  document.getElementById('setupScreen').style.display = '';
+  rebuildHomeScreen();
+  refreshHomeScreen();
+}
+
+function rebuildHomeScreen() {
+  const selectedLangs = getSelectedLangs();
+  const grid = document.getElementById('langGrid');
+  if (selectedLangs.length === 0) return;
+  // Only show selected languages on home
+  grid.innerHTML = selectedLangs.map(code => {
+    const lang = LANGS[code];
+    if (!lang) return '';
+    return `<div class="lang-card" data-lang="${code}" onclick="selectLang(this)">
+      <span class="flag">${lang.flag}</span>
+      <div class="name">${code.charAt(0).toUpperCase() + code.slice(1)}</div>
+      <div class="tutor">with ${lang.name}</div>
+      <div class="rank-display" id="rank-${code}"></div>
+      <div class="session-count" id="sessions-${code}"></div>
+    </div>`;
+  }).join('');
+}
+
+// ── Ready Screen ──
+function showReadyScreen() {
+  const lang = LANGS[selectedLang];
+  if (!lang) return;
+  document.getElementById('setupScreen').style.display = 'none';
+
+  // Greeting in target language
+  const greetings = {
+    spanish: '¡Hola!', arabic: 'مرحبا!', russian: 'Привет!', japanese: 'こんにちは！',
+    korean: '안녕하세요!', french: 'Bonjour!', english: 'Hello!', chinese: '你好！'
+  };
+  document.getElementById('readyGreeting').textContent = greetings[selectedLang] || 'Hello!';
+  document.getElementById('readyTutor').textContent = `${lang.name} is ready.`;
+
+  // Progress
+  const records = JSON.parse(localStorage.getItem('watson_sessions') || '[]');
+  const langSessions = records.filter(r => r.language === selectedLang).length;
+  const pct = Math.min(100, Math.round((langSessions % 15) / 15 * 100));
+  document.getElementById('readyProgressFill').style.width = pct + '%';
+  document.getElementById('readyProgressLabel').textContent = `${langSessions % 15} / 15 sessions`;
+
+  // API key check
+  const hasKey = !!getSettings().apiKey;
+  document.getElementById('readyStartBtn').style.display = hasKey ? '' : 'none';
+  document.getElementById('apiKeyInline').style.display = hasKey ? 'none' : '';
+
+  // Reset topic
+  sessionTopic = '';
+  document.querySelectorAll('.topic-chip').forEach(c => c.classList.remove('selected'));
+  const topicInput = document.getElementById('topicInput');
+  if (topicInput) topicInput.value = '';
+  document.getElementById('readyTopicArea').classList.remove('visible');
+
+  document.getElementById('readyScreen').classList.add('active');
+}
+
+function backToHome() {
+  document.getElementById('readyScreen').classList.remove('active');
+  document.getElementById('setupScreen').style.display = '';
+  selectedLang = null;
+}
+
+function toggleReadyTopic() {
+  document.getElementById('readyTopicArea').classList.toggle('visible');
+}
+
+function saveInlineApiKey() {
+  const key = document.getElementById('inlineApiKey').value.trim();
+  if (key) {
+    localStorage.setItem('watson_api_key', key);
+    document.getElementById('readyStartBtn').style.display = '';
+    document.getElementById('apiKeyInline').style.display = 'none';
+  }
 }
 
 // ── Audio Helpers ──
@@ -3811,6 +4147,9 @@ async function startSession() {
   if (topicInput && topicInput.value.trim()) {
     sessionTopic = topicInput.value.trim();
   }
+
+  // Hide ready screen
+  document.getElementById('readyScreen').classList.remove('active');
 
   // Load saved mode preference for this language
   const savedMode = localStorage.getItem('watson_mode_' + selectedLang);
@@ -4061,6 +4400,7 @@ function stopTimer() {
 // ── Session Management ──
 function showSession() {
   document.getElementById('setupScreen').style.display = 'none';
+  document.getElementById('readyScreen').classList.remove('active');
   document.getElementById('sessionScreen').classList.add('active');
   // Hide case board during session and review for more space
   document.getElementById('caseBoard').classList.add('hidden');
@@ -4277,7 +4617,11 @@ function goHome() {
   document.getElementById('progressScreen').classList.remove('active');
   document.getElementById('elementaryScreen').classList.remove('active');
   document.getElementById('reviewCardsScreen').classList.remove('active');
+  document.getElementById('readyScreen').classList.remove('active');
+  document.getElementById('onboardNative').classList.remove('active');
+  document.getElementById('onboardPick').classList.remove('active');
   document.getElementById('setupScreen').style.display = '';
+  rebuildHomeScreen();
   // Restore case board on wide screens
   document.getElementById('caseBoard').classList.remove('hidden');
   lastSender = null; lastBubble = null;
@@ -5843,9 +6187,29 @@ function updateSrsHomeButton() {
   if (window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches) {
     document.documentElement.classList.add('pwa-standalone');
   }
-  if (!getSettings().apiKey) setTimeout(openSettings, 500);
-  checkReady();
-  refreshHomeScreen();
+  // Check onboarding state
+  const nativeLang = getNativeLang();
+  const selectedLangs = getSelectedLangs();
+  if (!nativeLang || selectedLangs.length === 0) {
+    // First time — show onboarding
+    document.getElementById('setupScreen').style.display = 'none';
+    if (!nativeLang) {
+      showOnboarding();
+    } else {
+      showOnboardPick();
+    }
+  } else {
+    // Returning user — rebuild home with their languages
+    rebuildHomeScreen();
+    refreshHomeScreen();
+    // Update home review button
+    const dueCount = getDueCards().length;
+    const reviewBtn = document.getElementById('reviewHomeBtn');
+    if (reviewBtn && dueCount > 0) {
+      reviewBtn.style.display = '';
+      document.getElementById('reviewHomeDue').textContent = `(${dueCount})`;
+    }
+  }
   // Register PWA service worker
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').catch(() => {});
