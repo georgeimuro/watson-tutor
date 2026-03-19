@@ -1509,96 +1509,6 @@
   }
   .cheat-close:active { background: var(--surface2); }
 
-  /* ── Case Cards (Home) ── */
-  .case-card {
-    padding: 14px 16px;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-left: 3px solid var(--red);
-    border-radius: 6px;
-    margin-bottom: 8px;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-  .case-card:active { transform: scale(0.98); }
-  .case-card:hover { border-color: var(--brass); }
-  .case-card .case-title {
-    font-family: var(--heading);
-    font-size: 15px;
-    color: var(--cream);
-    margin-bottom: 4px;
-  }
-  .case-card .case-detail {
-    font-family: var(--mono);
-    font-size: 11px;
-    color: var(--text3);
-  }
-  .case-card.solved {
-    border-left-color: var(--green);
-    opacity: 0.7;
-  }
-  .case-card.solved .case-title { color: var(--text2); }
-  .case-card.coming {
-    border-left-color: var(--border);
-    opacity: 0.4;
-    cursor: default;
-  }
-  .case-card.coming:active { transform: none; }
-  .case-card.mystery {
-    border-left-color: var(--amber);
-    opacity: 0.5;
-    border-style: dashed;
-  }
-
-  /* Case Detail Modal */
-  .case-detail-overlay {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.8);
-    z-index: 100;
-    justify-content: center;
-    align-items: flex-start;
-    padding: 60px 16px 16px;
-    overflow-y: auto;
-  }
-  .case-detail-overlay.active { display: flex; }
-  .case-detail-content {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 24px 20px;
-    max-width: 480px;
-    width: 100%;
-  }
-  .case-detail-content h3 {
-    font-family: var(--heading);
-    color: var(--cream);
-    font-size: 20px;
-    margin-bottom: 12px;
-  }
-  .case-detail-content .mistake-example {
-    padding: 10px 12px;
-    background: var(--surface2);
-    border-radius: 6px;
-    margin-bottom: 8px;
-    font-family: var(--mono);
-    font-size: 13px;
-    line-height: 1.6;
-  }
-  .case-detail-content .mistake-wrong { color: var(--red); }
-  .case-detail-content .mistake-right { color: var(--green); }
-  .case-detail-content .case-rule {
-    padding: 12px;
-    border-left: 3px solid var(--amber);
-    background: var(--amber-soft);
-    border-radius: 0 6px 6px 0;
-    margin: 16px 0;
-    font-size: 13px;
-    color: var(--cream);
-    line-height: 1.6;
-  }
-
   .topic-chip {
     padding: 8px 14px;
     border-radius: 20px;
@@ -3505,73 +3415,80 @@
   </div>
 </div>
 
-<!-- Setup Screen (Home / Case Board) -->
+<!-- Setup Screen (Home) -->
 <div class="setup-screen" id="setupScreen">
-
-  <!-- Language selector (multiple languages) -->
-  <div id="langSelectorBar" style="display:none; width:100%; max-width:560px;">
-    <div class="lang-grid" id="langGrid"></div>
+  <div class="setup-title" id="setupTitle">
+    <h2>At your service,<br><em>shall we begin?</em></h2>
+    <p>Tap a language to start.</p>
   </div>
 
-  <!-- Case Board Home (single language view) -->
-  <div id="caseboardHome" style="width:100%; max-width:560px;">
+  <div class="watson-observation" id="watsonObservation" style="display:none;"></div>
 
-    <!-- Header: language + rank + streak -->
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-      <div>
-        <span id="cbLangName" style="font-family:var(--heading);font-size:22px;color:var(--cream);"></span>
-        <button id="cbRankBtn" onclick="showSkillConstellation()" style="background:none;border:1px solid var(--border);color:var(--amber);font-family:var(--mono);font-size:11px;padding:4px 10px;border-radius:12px;cursor:pointer;margin-left:8px;"></button>
-      </div>
-      <div id="cbStreak" style="font-size:14px;color:var(--text3);"></div>
+  <div class="lang-grid" id="langGrid">
+    <div class="lang-card" data-lang="spanish" onclick="selectLang(this)">
+      <span class="flag">&#127466;&#127480;</span>
+      <div class="name">Spanish</div>
+      <div class="tutor">with Lorenzo</div>
+      <div class="rank-display" id="rank-spanish"></div>
+      <div class="session-count" id="sessions-spanish"></div>
     </div>
-
-    <!-- Active Cases -->
-    <div id="cbActiveCases"></div>
-
-    <!-- Watson's Brief -->
-    <div id="cbWatsonBrief" style="margin:16px 0;padding:14px;background:var(--surface2);border-radius:8px;border-left:3px solid var(--brass);">
-      <div style="font-family:var(--mono);font-size:10px;color:var(--text3);letter-spacing:1px;margin-bottom:6px;">WATSON</div>
-      <div id="cbBriefText" style="font-size:14px;color:var(--cream);font-family:var(--body);line-height:1.5;"></div>
+    <div class="lang-card" data-lang="arabic" onclick="selectLang(this)">
+      <span class="flag">&#127480;&#127462;</span>
+      <div class="name">Arabic</div>
+      <div class="tutor">with Khalid</div>
+      <div class="rank-display" id="rank-arabic"></div>
+      <div class="session-count" id="sessions-arabic"></div>
     </div>
-
-    <!-- Talk button -->
-    <button class="btn btn-primary" id="cbTalkBtn" onclick="showReadyScreen()" style="width:100%;margin-bottom:8px;"></button>
-    <button class="ready-topic-toggle" onclick="toggleReadyTopic()" style="width:100%;text-align:center;">Have a topic in mind?</button>
-    <div class="ready-topic-area" id="readyTopicArea" style="margin-top:8px;">
-      <div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-bottom:10px;">
-        <button class="topic-chip" onclick="setTopicChip(this)">My day</button>
-        <button class="topic-chip" onclick="setTopicChip(this)">Hobbies</button>
-        <button class="topic-chip" onclick="setTopicChip(this)">Food</button>
-        <button class="topic-chip" onclick="setTopicChip(this)">Travel</button>
-        <button class="topic-chip" onclick="setTopicChip(this)">Music</button>
-        <button class="topic-chip" onclick="setTopicChip(this)">Movies</button>
-      </div>
-      <input type="text" id="topicInput" placeholder="Or type anything..."
-        style="width:100%;padding:10px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--body);font-size:13px;"
-        onkeydown="if(event.key==='Enter'){showReadyScreen();startSession();}">
+    <div class="lang-card" data-lang="russian" onclick="selectLang(this)">
+      <span class="flag">&#127479;&#127482;</span>
+      <div class="name">Russian</div>
+      <div class="tutor">with Dmitry</div>
+      <div class="rank-display" id="rank-russian"></div>
+      <div class="session-count" id="sessions-russian"></div>
     </div>
-
-    <!-- Coming Up (below the fold) -->
-    <div id="cbComingUp" style="margin-top:32px;padding-top:16px;border-top:1px solid var(--border);"></div>
-
-    <!-- Solved Cases -->
-    <div id="cbSolvedCases" style="margin-top:24px;"></div>
-
-    <!-- Multi-language link -->
-    <div style="text-align:center;margin-top:24px;">
-      <button class="explore-link" onclick="showLangSelector()">Switch language</button>
-      <span style="color:var(--border);margin:0 8px;">|</span>
-      <button class="explore-link" onclick="showOnboardPick()">Explore more languages</button>
+    <div class="lang-card" data-lang="japanese" onclick="selectLang(this)">
+      <span class="flag">&#127471;&#127477;</span>
+      <div class="name">Japanese</div>
+      <div class="tutor">with Keita</div>
+      <div class="rank-display" id="rank-japanese"></div>
+      <div class="session-count" id="sessions-japanese"></div>
     </div>
-
+    <div class="lang-card" data-lang="korean" onclick="selectLang(this)">
+      <span class="flag">&#127472;&#127479;</span>
+      <div class="name">Korean</div>
+      <div class="tutor">with Minji</div>
+      <div class="rank-display" id="rank-korean"></div>
+      <div class="session-count" id="sessions-korean"></div>
+    </div>
+    <div class="lang-card" data-lang="french" onclick="selectLang(this)">
+      <span class="flag">&#127467;&#127479;</span>
+      <div class="name">French</div>
+      <div class="tutor">with Camille</div>
+      <div class="rank-display" id="rank-french"></div>
+      <div class="session-count" id="sessions-french"></div>
+    </div>
+    <div class="lang-card" data-lang="english" onclick="selectLang(this)">
+      <span class="flag">&#127468;&#127463;</span>
+      <div class="name">English</div>
+      <div class="tutor">with Emma</div>
+      <div class="rank-display" id="rank-english"></div>
+      <div class="session-count" id="sessions-english"></div>
+    </div>
+    <div class="lang-card" data-lang="chinese" onclick="selectLang(this)">
+      <span class="flag">&#127464;&#127475;</span>
+      <div class="name">Chinese</div>
+      <div class="tutor">with Wei</div>
+      <div class="rank-display" id="rank-chinese"></div>
+      <div class="session-count" id="sessions-chinese"></div>
+    </div>
   </div>
 
-  <!-- API Key inline (first time) -->
-  <div class="api-key-inline" id="apiKeyHome" style="display:none;width:100%;max-width:560px;margin-top:16px;">
-    <p style="color:var(--text2);font-size:13px;">Enter your Gemini API key to start</p>
-    <input type="password" id="inlineApiKeyHome" placeholder="AIza...">
-    <p>Free from <a href="https://aistudio.google.com/apikey" target="_blank" style="color:var(--amber);">aistudio.google.com/apikey</a></p>
-    <button class="btn btn-primary" onclick="saveInlineApiKeyHome()" style="width:100%;margin-top:8px;">Save Key</button>
+  <button class="explore-link" onclick="showOnboardPick()">Explore more languages</button>
+
+  <div style="width:100%;max-width:560px;">
+    <button class="btn btn-secondary" id="reviewHomeBtn" onclick="showSrsReview()" style="width:100%;display:none;">
+      Review Cards <span id="reviewHomeDue"></span>
+    </button>
   </div>
 
 </div>
@@ -3684,11 +3601,6 @@
       <button class="btn btn-primary" onclick="saveSettings()">Save</button>
     </div>
   </div>
-</div>
-
-<!-- Case Detail Overlay -->
-<div class="case-detail-overlay" id="caseDetailOverlay" onclick="if(event.target===this)closeCaseDetail()">
-  <div class="case-detail-content" id="caseDetailContent"></div>
 </div>
 
 <!-- Bottom Tab Bar (mobile) -->
@@ -4275,9 +4187,8 @@ function updateOnboardContinue() {
 function finishOnboarding() {
   document.getElementById('onboardPick').classList.remove('active');
   document.getElementById('setupScreen').style.display = '';
-  buildCaseboardHome();
+  rebuildHomeScreen();
   refreshHomeScreen();
-  showTabBar();
 }
 
 function rebuildHomeScreen() {
@@ -4302,11 +4213,6 @@ function rebuildHomeScreen() {
 function showReadyScreen() {
   const lang = LANGS[selectedLang];
   if (!lang) return;
-  // If we have an API key, go straight to session
-  if (getSettings().apiKey) {
-    startSession();
-    return;
-  }
   document.getElementById('setupScreen').style.display = 'none';
 
   // Greeting in target language
@@ -4356,271 +4262,6 @@ function saveInlineApiKey() {
     document.getElementById('readyStartBtn').style.display = '';
     document.getElementById('apiKeyInline').style.display = 'none';
   }
-}
-
-function saveInlineApiKeyHome() {
-  const key = document.getElementById('inlineApiKeyHome').value.trim();
-  if (key) {
-    localStorage.setItem('watson_api_key', key);
-    document.getElementById('apiKeyHome').style.display = 'none';
-    document.getElementById('cbTalkBtn').style.display = '';
-  }
-}
-
-// ── Case Board Home ──
-
-function buildCaseboardHome() {
-  const langs = getSelectedLangs();
-  if (langs.length === 0) return;
-
-  // Default to first language or last used
-  const lastUsed = localStorage.getItem('watson_last_lang') || langs[0];
-  selectedLang = langs.includes(lastUsed) ? lastUsed : langs[0];
-  if (selectedLang === 'japanese') initKuroshiro();
-
-  const lang = LANGS[selectedLang];
-  if (!lang) return;
-
-  // Show multi-language selector if more than 1 language
-  const selectorBar = document.getElementById('langSelectorBar');
-  if (langs.length > 1) {
-    selectorBar.style.display = '';
-    const grid = document.getElementById('langGrid');
-    grid.innerHTML = langs.map(code => {
-      const l = LANGS[code];
-      if (!l) return '';
-      const isActive = code === selectedLang ? 'selected' : '';
-      return `<div class="lang-card ${isActive}" data-lang="${code}" onclick="switchHomeLang('${code}')">
-        <span class="flag">${l.flag}</span>
-        <div class="name">${code.charAt(0).toUpperCase() + code.slice(1)}</div>
-        <div class="tutor">with ${l.name}</div>
-        <div class="rank-display" id="rank-${code}"></div>
-        <div class="session-count" id="sessions-${code}"></div>
-      </div>`;
-    }).join('');
-  } else {
-    selectorBar.style.display = 'none';
-  }
-
-  // Language name + rank
-  document.getElementById('cbLangName').textContent = selectedLang.charAt(0).toUpperCase() + selectedLang.slice(1);
-  const rankData = getRankForLang(selectedLang);
-  const rankBtn = document.getElementById('cbRankBtn');
-  if (rankData && rankData.sessions > 0) {
-    rankBtn.textContent = rankData.rank.name;
-    rankBtn.style.display = '';
-  } else {
-    rankBtn.style.display = 'none';
-  }
-
-  // Streak
-  const stats = getSessionStats();
-  document.getElementById('cbStreak').innerHTML = stats && stats.streak > 0
-    ? `🔥 ${stats.streak}`
-    : '';
-
-  // Active Cases
-  buildActiveCases();
-
-  // Watson's Brief
-  buildWatsonBrief();
-
-  // Talk button
-  const hasKey = !!getSettings().apiKey;
-  document.getElementById('cbTalkBtn').textContent = `Talk to ${lang.name}`;
-  document.getElementById('cbTalkBtn').style.display = hasKey ? '' : 'none';
-  document.getElementById('apiKeyHome').style.display = hasKey ? 'none' : '';
-
-  // Coming Up
-  buildComingUp();
-
-  // Solved Cases
-  buildSolvedCases();
-}
-
-function switchHomeLang(code) {
-  selectedLang = code;
-  localStorage.setItem('watson_last_lang', code);
-  if (code === 'japanese') initKuroshiro();
-  buildCaseboardHome();
-  refreshHomeScreen();
-}
-
-function showLangSelector() {
-  const selectorBar = document.getElementById('langSelectorBar');
-  selectorBar.style.display = selectorBar.style.display === 'none' ? '' : 'none';
-}
-
-function buildActiveCases() {
-  const container = document.getElementById('cbActiveCases');
-  const profile = getLearningProfile();
-  const lp = profile[selectedLang];
-
-  if (!lp || !lp.weaknesses || lp.weaknesses.filter(w => !w.resolved).length === 0) {
-    // First time or no weaknesses
-    const records = JSON.parse(localStorage.getItem('watson_sessions') || '[]');
-    const langSessions = records.filter(r => r.language === selectedLang).length;
-    if (langSessions === 0) {
-      container.innerHTML = '';
-      return;
-    }
-    container.innerHTML = '<div style="color:var(--text3);font-family:var(--mono);font-size:12px;padding:12px 0;">No active cases. Clean slate.</div>';
-    return;
-  }
-
-  const active = lp.weaknesses.filter(w => !w.resolved).slice(0, 5);
-  container.innerHTML = '<div style="font-family:var(--mono);font-size:10px;color:var(--text3);letter-spacing:1px;margin-bottom:8px;">ACTIVE CASES</div>' +
-    active.map(w => {
-      const count = w.sessionCount || 1;
-      return `<div class="case-card" onclick="openCaseDetail('${encodeURIComponent(w.topic)}')">
-        <div class="case-title">📌 ${w.topic}</div>
-        <div class="case-detail">${count} time${count !== 1 ? 's' : ''} this week</div>
-      </div>`;
-    }).join('');
-}
-
-function buildWatsonBrief() {
-  const briefEl = document.getElementById('cbBriefText');
-  const profile = getLearningProfile();
-  const lp = profile[selectedLang];
-  const records = JSON.parse(localStorage.getItem('watson_sessions') || '[]');
-  const langSessions = records.filter(r => r.language === selectedLang).length;
-
-  if (langSessions === 0) {
-    briefEl.textContent = "Ready when you are. Let's find out what you know.";
-    return;
-  }
-
-  // Build brief from actual data
-  const active = lp && lp.weaknesses ? lp.weaknesses.filter(w => !w.resolved) : [];
-  const level = getUserLevel(selectedLang);
-  const unitIdx = getUserUnit(selectedLang);
-  const curriculum = CURRICULUM[level];
-  const unit = curriculum ? curriculum.units[Math.min(unitIdx, curriculum.units.length - 1)] : null;
-
-  if (active.length > 0) {
-    const top = active[0].topic;
-    briefEl.textContent = `${top} keeps showing up. Let's sort it out.`;
-  } else if (unit) {
-    briefEl.textContent = `Next up: ${unit.topic.toLowerCase()}. Let's get into it.`;
-  } else {
-    briefEl.textContent = `Solid foundation. Let's push further.`;
-  }
-}
-
-function buildComingUp() {
-  const container = document.getElementById('cbComingUp');
-  const level = getUserLevel(selectedLang);
-  const unitIdx = getUserUnit(selectedLang);
-  const curriculum = CURRICULUM[level];
-  if (!curriculum) { container.innerHTML = ''; return; }
-
-  const upcoming = curriculum.units.slice(unitIdx + 1);
-  const nextLevel = LEVEL_ORDER[LEVEL_ORDER.indexOf(level) + 1];
-  const nextCurriculum = nextLevel ? CURRICULUM[nextLevel] : null;
-
-  if (upcoming.length === 0 && !nextCurriculum) { container.innerHTML = ''; return; }
-
-  let html = '<div style="font-family:var(--mono);font-size:10px;color:var(--text3);letter-spacing:1px;margin-bottom:8px;">COMING UP</div>';
-
-  upcoming.forEach(u => {
-    html += `<div class="case-card coming"><div class="case-title">${u.topic}</div></div>`;
-  });
-
-  // Mystery case between levels
-  html += `<div class="case-card mystery"><div class="case-title">🔍 ???</div><div class="case-detail">Complete this level to unlock</div></div>`;
-
-  if (nextCurriculum) {
-    html += `<div style="font-family:var(--mono);font-size:10px;color:var(--text3);letter-spacing:1px;margin:16px 0 8px;">${nextCurriculum.label.toUpperCase()}</div>`;
-    nextCurriculum.units.slice(0, 2).forEach(u => {
-      html += `<div class="case-card coming"><div class="case-title">${u.topic}</div></div>`;
-    });
-  }
-
-  container.innerHTML = html;
-}
-
-function buildSolvedCases() {
-  const container = document.getElementById('cbSolvedCases');
-  const profile = getLearningProfile();
-  const lp = profile[selectedLang];
-
-  if (!lp || !lp.weaknesses) { container.innerHTML = ''; return; }
-
-  const solved = lp.weaknesses.filter(w => w.resolved);
-  if (solved.length === 0) { container.innerHTML = ''; return; }
-
-  let html = '<div style="font-family:var(--mono);font-size:10px;color:var(--text3);letter-spacing:1px;margin-bottom:8px;">SOLVED</div>';
-  solved.forEach(w => {
-    html += `<div class="case-card solved" onclick="openCaseDetail('${encodeURIComponent(w.topic)}')">
-      <div class="case-title">✦ ${w.topic}</div>
-      <div class="case-detail">Closed</div>
-    </div>`;
-  });
-  container.innerHTML = html;
-}
-
-// ── Case Detail ──
-
-function openCaseDetail(topicEncoded) {
-  const topic = decodeURIComponent(topicEncoded);
-  const profile = getLearningProfile();
-  const lp = profile[selectedLang];
-  if (!lp) return;
-
-  const weakness = lp.weaknesses.find(w => w.topic === topic);
-  if (!weakness) return;
-
-  const content = document.getElementById('caseDetailContent');
-  const isSolved = weakness.resolved;
-
-  let html = `<div style="display:flex;justify-content:space-between;align-items:center;">
-    <h3>📌 ${topic}</h3>
-    <button onclick="closeCaseDetail()" style="background:none;border:none;color:var(--text3);font-size:20px;cursor:pointer;">&times;</button>
-  </div>`;
-
-  html += `<div style="font-family:var(--mono);font-size:12px;color:var(--text3);margin-bottom:16px;">
-    ${isSolved ? 'Case closed' : `${weakness.sessionCount || 1} times encountered`}
-    ${weakness.firstSeen ? ' · Opened ' + weakness.firstSeen : ''}
-  </div>`;
-
-  // Show stored examples if we have gap analysis
-  const gapData = localStorage.getItem('watson_srs_gap_' + selectedLang);
-  if (gapData) {
-    html += `<div class="case-rule">${gapData.substring(0, 300)}${gapData.length > 300 ? '...' : ''}</div>`;
-  }
-
-  // Show related SRS cards
-  const srsCards = JSON.parse(localStorage.getItem('watson_srs_cards') || '[]');
-  const related = srsCards.filter(c => c.lang === selectedLang && c.lapses > 0).slice(0, 5);
-  if (related.length > 0) {
-    html += '<div style="font-family:var(--mono);font-size:10px;color:var(--text3);letter-spacing:1px;margin:16px 0 8px;">RELATED WORDS</div>';
-    related.forEach(c => {
-      html += `<div class="mistake-example"><span class="mistake-wrong">${c.word}</span> — ${c.meaning} <span style="color:var(--text3);">(${c.lapses} mistake${c.lapses !== 1 ? 's' : ''})</span></div>`;
-    });
-  }
-
-  if (!isSolved) {
-    html += `<button class="btn btn-primary" onclick="focusOnCase('${encodeURIComponent(topic)}')" style="width:100%;margin-top:16px;">Focus on this today</button>`;
-  }
-
-  content.innerHTML = html;
-  document.getElementById('caseDetailOverlay').classList.add('active');
-}
-
-function closeCaseDetail() {
-  document.getElementById('caseDetailOverlay').classList.remove('active');
-}
-
-function focusOnCase(topicEncoded) {
-  sessionTopic = decodeURIComponent(topicEncoded);
-  closeCaseDetail();
-  showReadyScreen();
-}
-
-function showSkillConstellation() {
-  // Placeholder — will build visual later
-  showProgress();
 }
 
 // ── Audio Helpers ──
@@ -5140,7 +4781,7 @@ function goHome() {
   document.getElementById('onboardNative').classList.remove('active');
   document.getElementById('onboardPick').classList.remove('active');
   document.getElementById('setupScreen').style.display = '';
-  buildCaseboardHome();
+  rebuildHomeScreen();
   // Restore case board on wide screens
   document.getElementById('caseBoard').classList.remove('hidden');
   lastSender = null; lastBubble = null;
@@ -6721,11 +6362,18 @@ function updateSrsHomeButton() {
       showOnboardPick();
     }
   } else {
-    // Returning user — build case board home
-    buildCaseboardHome();
+    // Returning user — rebuild home with their languages
+    rebuildHomeScreen();
     refreshHomeScreen();
     showTabBar();
     updateTabBarBadge();
+    // Update home review button
+    const dueCount = getDueCards().length;
+    const reviewBtn = document.getElementById('reviewHomeBtn');
+    if (reviewBtn && dueCount > 0) {
+      reviewBtn.style.display = '';
+      document.getElementById('reviewHomeDue').textContent = `(${dueCount})`;
+    }
   }
   // Register PWA service worker
   if ('serviceWorker' in navigator) {
