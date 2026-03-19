@@ -4125,6 +4125,7 @@ function showOnboarding() {
   document.getElementById('setupScreen').style.display = 'none';
   document.getElementById('readyScreen').classList.remove('active');
   document.getElementById('onboardNative').classList.add('active');
+  hideTabBar();
   // Build native lang list
   const list = document.getElementById('nativeLangList');
   list.innerHTML = NATIVE_LANGS.map(l =>
@@ -4148,6 +4149,7 @@ function pickNativeLang(el, code) {
 function showOnboardPick() {
   document.getElementById('setupScreen').style.display = 'none';
   document.getElementById('onboardPick').classList.add('active');
+  hideTabBar();
   const nativeLang = getNativeLang();
   const list = document.getElementById('pickLangList');
   const currentSelected = getSelectedLangs();
@@ -6351,8 +6353,9 @@ function updateSrsHomeButton() {
   const nativeLang = getNativeLang();
   const selectedLangs = getSelectedLangs();
   if (!nativeLang || selectedLangs.length === 0) {
-    // First time — show onboarding
+    // First time — show onboarding, hide tab bar
     document.getElementById('setupScreen').style.display = 'none';
+    hideTabBar();
     if (!nativeLang) {
       showOnboarding();
     } else {
