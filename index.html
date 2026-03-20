@@ -3527,7 +3527,7 @@
   <div class="review-body" id="reviewBody"></div>
   <div class="review-actions">
     <button class="btn btn-secondary" onclick="goHome()">Home</button>
-    <button class="btn btn-secondary" onclick="downloadSessionAudio()" title="Download session audio">&#127911; Audio</button>
+    <button class="btn btn-secondary" onclick="downloadSessionAudio()" title="Download session audio" style="font-size:10px;">&#127911;</button>
     <button class="btn btn-primary" onclick="showSrsReview()">Review Cards</button>
   </div>
 </div>
@@ -3672,6 +3672,8 @@ let workletNode = null;
 let selectedLang = null;
 let transcripts = [];
 let sessionAudioChunks = [];
+let mediaRecorder = null;
+let opusChunks = [];
 let sessionStart = null;
 let timerInterval = null;
 let micMuted = false;
@@ -4327,6 +4329,8 @@ async function startSession() {
   ws = new WebSocket(url);
   transcripts = [];
   sessionAudioChunks = [];
+  opusChunks = [];
+  mediaRecorder = null;
 
   ws.addEventListener('open', () => {
     ws.send(JSON.stringify({
@@ -4475,6 +4479,23 @@ async function startMic() {
   workletNode.connect(audioContext.destination);
   micMuted = false;
   document.getElementById('micBtn').classList.add('listening');
+
+  // Start Opus recording in parallel (for post-session review)
+  try {
+    opusChunks = [];
+    const opusMimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+      ? 'audio/webm;codecs=opus'
+      : MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')
+        ? 'audio/ogg;codecs=opus'
+        : 'audio/webm';
+    mediaRecorder = new MediaRecorder(micStream, { mimeType: opusMimeType, audioBitsPerSecond: 24000 });
+    mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) opusChunks.push(e.data); };
+    mediaRecorder.start(5000); // collect chunks every 5 seconds
+    console.log('Opus recording started:', opusMimeType);
+  } catch (e) {
+    console.warn('Opus recording failed, falling back to PCM:', e);
+    mediaRecorder = null;
+  }
 }
 function toggleMic() {
   micMuted = !micMuted;
@@ -4483,9 +4504,21 @@ function toggleMic() {
   btn.innerHTML = micMuted ? '&#128263;' : '&#127908;';
 }
 function stopMic() {
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+    mediaRecorder.stop();
+    console.log('Opus recording stopped, chunks:', opusChunks.length);
+  }
   if (workletNode) { workletNode.disconnect(); workletNode = null; }
   if (audioContext) { audioContext.close(); audioContext = null; }
   if (micStream) { micStream.getTracks().forEach(t => t.stop()); micStream = null; }
+}
+
+function getSessionOpusBlob() {
+  if (opusChunks.length > 0) {
+    const mimeType = mediaRecorder ? mediaRecorder.mimeType : 'audio/webm';
+    return new Blob(opusChunks, { type: mimeType });
+  }
+  return null;
 }
 
 // ── Transcript ──
@@ -4608,13 +4641,23 @@ async function generateReview() {
   // Build review prompt — use audio as primary source if available
   let reviewPrompt;
   let parts = [];
-  const hasAudio = sessionAudioChunks.length > 0;
 
-  if (hasAudio) {
+  // Prefer Opus recording (smaller, tested equal/better accuracy)
+  const opusBlob = getSessionOpusBlob();
+  const hasAudio = opusBlob !== null || sessionAudioChunks.length > 0;
+
+  if (opusBlob) {
+    const opusSizeMB = opusBlob.size / 1024 / 1024;
+    console.log(`Session audio (Opus): ${opusSizeMB.toFixed(2)}MB`);
+    if (opusSizeMB < 20) {
+      const audioBase64 = await blobToBase64(opusBlob);
+      parts.push({ inlineData: { mimeType: opusBlob.type, data: audioBase64 } });
+    }
+  } else if (sessionAudioChunks.length > 0) {
+    // Fallback to WAV if Opus not available
     const wavBlob = buildWav(sessionAudioChunks);
     const wavSizeMB = wavBlob.size / 1024 / 1024;
-    console.log(`Session audio: ${wavSizeMB.toFixed(1)}MB, ${sessionAudioChunks.length} chunks`);
-
+    console.log(`Session audio (WAV fallback): ${wavSizeMB.toFixed(1)}MB`);
     if (wavSizeMB < 15) {
       const audioBase64 = await blobToBase64(wavBlob);
       parts.push({ inlineData: { mimeType: 'audio/wav', data: audioBase64 } });
@@ -4803,8 +4846,21 @@ function autoDownloadReview(settings, lang) {
 function downloadReview() { autoDownloadReview(getSettings(), LANGS[selectedLang]); }
 
 function downloadSessionAudio() {
+  const opusBlob = getSessionOpusBlob();
+  if (opusBlob) {
+    console.log('Downloading Opus:', (opusBlob.size / 1024).toFixed(0) + 'KB');
+    const url = URL.createObjectURL(opusBlob);
+    const a = document.createElement('a');
+    a.href = url;
+    const ext = opusBlob.type.includes('ogg') ? 'ogg' : 'webm';
+    a.download = `watson_${selectedLang}_audio_${new Date().toISOString().slice(0,10)}.${ext}`;
+    a.click();
+    URL.revokeObjectURL(url);
+    return;
+  }
+  // Fallback to WAV
   console.log('Audio chunks:', sessionAudioChunks.length);
-  if (sessionAudioChunks.length === 0) { alert('No audio recorded. Chunks: 0'); return; }
+  if (sessionAudioChunks.length === 0) { alert('No audio recorded.'); return; }
   const wavBlob = buildWav(sessionAudioChunks);
   console.log('WAV size:', (wavBlob.size / 1024 / 1024).toFixed(1) + 'MB');
   const url = URL.createObjectURL(wavBlob);
