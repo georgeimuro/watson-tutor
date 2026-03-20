@@ -4631,10 +4631,11 @@ The text transcript is included as supplementary context but the audio is the pr
 ${convoText}
 
 Review format:
-1. **Mistakes made**: List each grammar/vocabulary error you HEAR, what was said vs correct, and WHY.
+1. **Mistakes made**: List each grammar/vocabulary error you HEAR, what was said vs correct, and WHY. Include timestamps.
 2. **New vocabulary**: Words/phrases to learn, with etymology when interesting.
 3. **Patterns to drill**: Recurring weak points for next session.
-4. **Progress notes**: What went well.${pitchSection}`;
+4. **Progress notes**: What went well.${pitchSection}
+6. **Audio verification**: Quote 3 specific things you heard in the audio that differ from or are not visible in the text transcript. This proves the audio was analyzed.`;
   } else {
     // Fallback: text-only review (no audio captured)
     reviewPrompt = `Review this ${selectedLang} practice conversation. Be specific and actionable.
@@ -4662,7 +4663,10 @@ ${convoText}`;
     if (data.error) { document.getElementById('reviewBody').innerHTML = `<p>Review error: ${data.error.message}</p>`; return; }
     reviewMarkdown = data.candidates?.[0]?.content?.parts?.[0]?.text || 'No review generated.';
     autoDownloadReview(settings, lang);
-    document.getElementById('reviewBody').innerHTML = markdownToHtml(reviewMarkdown);
+    const audioTag = hasAudio && parts.length > 1
+      ? '<div style="font-family:var(--mono);font-size:10px;color:var(--green);margin-bottom:12px;">&#127911; Review generated from session audio</div>'
+      : '<div style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-bottom:12px;">&#128196; Review generated from text transcript only</div>';
+    document.getElementById('reviewBody').innerHTML = audioTag + markdownToHtml(reviewMarkdown);
 
     // Generate SRS cards from session vocabulary
     const newSrsCards = generateSrsCardsFromSession(selectedLang);
@@ -4799,8 +4803,10 @@ function autoDownloadReview(settings, lang) {
 function downloadReview() { autoDownloadReview(getSettings(), LANGS[selectedLang]); }
 
 function downloadSessionAudio() {
-  if (sessionAudioChunks.length === 0) { alert('No audio recorded.'); return; }
+  console.log('Audio chunks:', sessionAudioChunks.length);
+  if (sessionAudioChunks.length === 0) { alert('No audio recorded. Chunks: 0'); return; }
   const wavBlob = buildWav(sessionAudioChunks);
+  console.log('WAV size:', (wavBlob.size / 1024 / 1024).toFixed(1) + 'MB');
   const url = URL.createObjectURL(wavBlob);
   const a = document.createElement('a');
   a.href = url;
