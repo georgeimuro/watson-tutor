@@ -3527,6 +3527,7 @@
   <div class="review-body" id="reviewBody"></div>
   <div class="review-actions">
     <button class="btn btn-secondary" onclick="goHome()">Home</button>
+    <button class="btn btn-secondary" onclick="downloadSessionAudio()" title="Download session audio">&#127911; Audio</button>
     <button class="btn btn-primary" onclick="showSrsReview()">Review Cards</button>
   </div>
 </div>
@@ -4466,10 +4467,8 @@ async function startMic() {
       ws.send(JSON.stringify({
         realtimeInput: { mediaChunks: [{ mimeType: 'audio/pcm', data: arrayBufferToBase64(event.data.pcm) }] }
       }));
-      // Buffer audio for post-session pitch analysis (Japanese)
-      if (selectedLang === 'japanese') {
-        sessionAudioChunks.push(new Int16Array(event.data.pcm));
-      }
+      // Buffer audio for post-session review (all languages)
+      sessionAudioChunks.push(new Int16Array(event.data.pcm));
     }
   };
   source.connect(workletNode);
@@ -4604,14 +4603,60 @@ async function generateReview() {
   if (!convoText.trim()) { document.getElementById('reviewBody').innerHTML = '<p>No conversation to review.</p>'; return; }
 
   const pitchExtras = { japanese: 'Pay special attention to pitch accent patterns.', arabic: 'Note emphatic consonant confusion and pharyngeal sounds.', russian: 'Note palatalization and stress placement issues.', spanish: 'Note vowel reduction and stress placement.' };
-  const pitchSection = `\n5. **Pronunciation**: Based on transcription artifacts (word splitting, phonetic errors, tutor corrections), identify words the learner likely mispronounced. ${pitchExtras[selectedLang] || ''} List the top 3 sounds to practice with minimal pair exercises.`;
-  const reviewPrompt = `Review this ${selectedLang} practice conversation. Be specific and actionable.\n\n1. **Mistakes made**: List each grammar/vocabulary error, what was said vs correct, and WHY.\n2. **New vocabulary**: Words/phrases to learn, with etymology when interesting.\n3. **Patterns to drill**: Recurring weak points for next session.\n4. **Progress notes**: What went well.${pitchSection}\n\nConversation:\n${convoText}`;
+  const pitchSection = `\n5. **Pronunciation**: Listen to the student's actual audio and identify specific pronunciation issues. ${pitchExtras[selectedLang] || ''} List the top 3 sounds to practice with minimal pair exercises.`;
+
+  // Build review prompt — use audio as primary source if available
+  let reviewPrompt;
+  let parts = [];
+  const hasAudio = sessionAudioChunks.length > 0;
+
+  if (hasAudio) {
+    const wavBlob = buildWav(sessionAudioChunks);
+    const wavSizeMB = wavBlob.size / 1024 / 1024;
+    console.log(`Session audio: ${wavSizeMB.toFixed(1)}MB, ${sessionAudioChunks.length} chunks`);
+
+    if (wavSizeMB < 15) {
+      const audioBase64 = await blobToBase64(wavBlob);
+      parts.push({ inlineData: { mimeType: 'audio/wav', data: audioBase64 } });
+    }
+  }
+
+  if (parts.length > 0) {
+    // Audio-based review — Gemini listens to the actual conversation
+    reviewPrompt = `Listen to this ${selectedLang} practice conversation audio and review the student's performance. Be specific and actionable.
+
+IMPORTANT: The student is practicing ${selectedLang}. Analyze what they ACTUALLY said in the audio, not just what the text transcript shows (the transcript below may contain errors).
+
+The text transcript is included as supplementary context but the audio is the primary source:
+${convoText}
+
+Review format:
+1. **Mistakes made**: List each grammar/vocabulary error you HEAR, what was said vs correct, and WHY.
+2. **New vocabulary**: Words/phrases to learn, with etymology when interesting.
+3. **Patterns to drill**: Recurring weak points for next session.
+4. **Progress notes**: What went well.${pitchSection}`;
+  } else {
+    // Fallback: text-only review (no audio captured)
+    reviewPrompt = `Review this ${selectedLang} practice conversation. Be specific and actionable.
+
+NOTE: The student's speech transcription may contain errors — random words from other languages are ASR artifacts, not what the student said. The tutor's responses indicate what the student likely said. Focus on patterns from the tutor's corrections.
+
+1. **Mistakes made**: List each grammar/vocabulary error, what was said vs correct, and WHY.
+2. **New vocabulary**: Words/phrases to learn, with etymology when interesting.
+3. **Patterns to drill**: Recurring weak points for next session.
+4. **Progress notes**: What went well.${pitchSection}
+
+Conversation:
+${convoText}`;
+  }
+
+  parts.push({ text: reviewPrompt });
 
   try {
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${settings.apiKey}`,
       { method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ parts: [{ text: reviewPrompt }] }] }) }
+        body: JSON.stringify({ contents: [{ parts }] }) }
     );
     const data = await response.json();
     if (data.error) { document.getElementById('reviewBody').innerHTML = `<p>Review error: ${data.error.message}</p>`; return; }
@@ -4630,10 +4675,7 @@ async function generateReview() {
       document.getElementById('reviewBody').appendChild(cardNote);
     }
 
-    // Pitch accent analysis for Japanese (uses buffered audio)
-    if (selectedLang === 'japanese' && sessionAudioChunks.length > 0) {
-      analyzePitchAccent(settings.apiKey, convoText);
-    }
+    // Pitch accent analysis now included in audio-based review for all languages
   } catch (e) {
     document.getElementById('reviewBody').innerHTML = `<p>Review error: ${e.message}</p>`;
   }
@@ -4755,6 +4797,17 @@ function autoDownloadReview(settings, lang) {
   URL.revokeObjectURL(url);
 }
 function downloadReview() { autoDownloadReview(getSettings(), LANGS[selectedLang]); }
+
+function downloadSessionAudio() {
+  if (sessionAudioChunks.length === 0) { alert('No audio recorded.'); return; }
+  const wavBlob = buildWav(sessionAudioChunks);
+  const url = URL.createObjectURL(wavBlob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `watson_${selectedLang}_audio_${new Date().toISOString().slice(0,10)}.wav`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 function newSession() {
   document.getElementById('reviewScreen').classList.remove('active');
