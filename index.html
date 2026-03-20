@@ -4504,13 +4504,20 @@ function toggleMic() {
   btn.innerHTML = micMuted ? '&#128263;' : '&#127908;';
 }
 function stopMic() {
-  if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-    mediaRecorder.stop();
-    console.log('Opus recording stopped, chunks:', opusChunks.length);
-  }
-  if (workletNode) { workletNode.disconnect(); workletNode = null; }
-  if (audioContext) { audioContext.close(); audioContext = null; }
-  if (micStream) { micStream.getTracks().forEach(t => t.stop()); micStream = null; }
+  return new Promise((resolve) => {
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+      mediaRecorder.onstop = () => {
+        console.log('Opus recording stopped, chunks:', opusChunks.length, 'total size:', opusChunks.reduce((s,c) => s + c.size, 0) + ' bytes');
+        resolve();
+      };
+      mediaRecorder.stop();
+    } else {
+      resolve();
+    }
+    if (workletNode) { workletNode.disconnect(); workletNode = null; }
+    if (audioContext) { audioContext.close(); audioContext = null; }
+    if (micStream) { micStream.getTracks().forEach(t => t.stop()); micStream = null; }
+  });
 }
 
 function getSessionOpusBlob() {
@@ -4611,7 +4618,7 @@ function showSession() {
 async function endSession() {
   const duration = stopTimer();
   const elapsed = Math.floor((Date.now() - sessionStart) / 1000);
-  stopMic();
+  await stopMic();
   if (ws) { ws.close(); ws = null; }
   clearPlayback();
   reviewDownloaded = false;
