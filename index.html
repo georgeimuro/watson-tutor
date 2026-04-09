@@ -3961,21 +3961,25 @@ function buildLessonPrompt(lang, settings) {
 
   // First session instructions
   if (isFirstSession) {
-    prompt += `FIRST SESSION: This is the student's very first time with you.\n`;
+    prompt += `FIRST SESSION — LEVEL ASSESSMENT:\n`;
+    prompt += `This is the student's very first time with you. Your job in the first 1-2 minutes is to naturally gauge their actual level.\n`;
     if (!hasName) {
-      prompt += `- Start by greeting them in ${lang} (one short phrase), then in their language ask what they'd like to be called.\n`;
+      prompt += `- Start by greeting them in ${lang} (one short phrase), then ask what they'd like to be called.\n`;
     } else {
-      prompt += `- Greet ${settings.name} warmly in ${lang}, then ask about their experience with the language.\n`;
+      prompt += `- Greet ${settings.name} warmly in ${lang}.\n`;
     }
-    prompt += `- Ask if they've studied this language before to gauge their level.\n`;
-    prompt += `- Ask what got them interested — do they watch any shows, listen to music, or have other connections to the language?\n`;
-    prompt += `- Keep the first few exchanges warm and welcoming. Build comfort before teaching.\n\n`;
+    prompt += `- Do NOT ask "what's your level?" — instead, start simple and ESCALATE based on their response.\n`;
+    prompt += `- If they respond confidently to your greeting, try a past tense question, then a hypothetical, then an opinion.\n`;
+    prompt += `- If they struggle with the greeting, stay at basics — introduce yourself, teach a useful phrase.\n`;
+    prompt += `- Within 3-4 exchanges you should know their level. Adjust your complexity to match what you discover.\n`;
+    prompt += `- Ask what got them interested — shows, music, connections to the language.\n`;
+    prompt += `- Keep it warm and welcoming. Build comfort while assessing.\n\n`;
   }
 
   // Core conversation rules (same for all languages)
   prompt += `Core rules:\n`;
   prompt += `- ${langConfig.langRules}\n`;
-  prompt += `- Keep responses 2-4 sentences. Conversation, not lecture.\n`;
+  prompt += `- IMPORTANT: Keep your turns SHORT. This is a conversation, not a lecture. Wait for the student to respond.\n`;
   prompt += `- Be PROACTIVE: teach vocabulary and share etymology naturally.\n`;
   prompt += `- Track mistakes — if the same error happens twice, flag the pattern.\n`;
   prompt += `- Be natural, warm, responsive. This is a real-time voice conversation.\n`;
@@ -4046,11 +4050,26 @@ function buildLessonPrompt(lang, settings) {
 
 // ── Settings ──
 function getSettings() {
+  const globalLevel = localStorage.getItem('watson_level') || 'beginner';
+  const langLevel = selectedLang ? localStorage.getItem('watson_level_' + selectedLang) : null;
   return {
     apiKey: localStorage.getItem('watson_api_key') || '',
     name: localStorage.getItem('watson_name') || 'Student',
-    level: localStorage.getItem('watson_level') || 'beginner',
+    level: langLevel || globalLevel,
   };
+}
+
+function isFirstSession(lang) {
+  const records = JSON.parse(localStorage.getItem('watson_sessions') || '[]');
+  return !records.some(r => r.language === lang);
+}
+
+function getLangLevel(lang) {
+  return localStorage.getItem('watson_level_' + lang) || localStorage.getItem('watson_level') || 'beginner';
+}
+
+function setLangLevel(lang, level) {
+  localStorage.setItem('watson_level_' + lang, level);
 }
 function openSettings() {
   const s = getSettings();
@@ -4075,6 +4094,7 @@ function saveSettings() {
   if (key) localStorage.setItem('watson_api_key', key);
   if (name) localStorage.setItem('watson_name', name);
   localStorage.setItem('watson_level', level);
+  if (selectedLang) setLangLevel(selectedLang, level);
   // Save media preferences
   const mediaRaw = document.getElementById('mediaInput').value;
   if (selectedLang && mediaRaw) {
@@ -4645,6 +4665,12 @@ async function generateReview() {
   const pitchExtras = { japanese: 'Pay special attention to pitch accent patterns.', arabic: 'Note emphatic consonant confusion and pharyngeal sounds.', russian: 'Note palatalization and stress placement issues.', spanish: 'Note vowel reduction and stress placement.' };
   const pitchSection = `\n5. **Pronunciation**: Listen to the student's actual audio and identify specific pronunciation issues. ${pitchExtras[selectedLang] || ''} List the top 3 sounds to practice with minimal pair exercises.`;
 
+  // On early sessions, ask for level assessment
+  const sessionCount = JSON.parse(localStorage.getItem('watson_sessions') || '[]').filter(r => r.language === selectedLang).length;
+  const levelAssessSection = sessionCount <= 3
+    ? `\n7. **Level Assessment**: Based on this conversation, what is the student's actual level? Reply with EXACTLY ONE of: beginner, intermediate, heritage, advanced. Consider: vocabulary range, grammar accuracy, response complexity, comprehension. Put your answer on its own line formatted as: ASSESSED_LEVEL: [level]`
+    : '';
+
   // Build review prompt — use audio as primary source if available
   let reviewPrompt;
   let parts = [];
@@ -4673,19 +4699,18 @@ async function generateReview() {
 
   if (parts.length > 0) {
     // Audio-based review — Gemini listens to the actual conversation
-    reviewPrompt = `Listen to this ${selectedLang} practice conversation audio and review the student's performance. Be specific and actionable.
+    // DO NOT include the text transcript — it's from the buggy Live API and contaminates the review
+    reviewPrompt = `Listen to this ${selectedLang} practice conversation audio and review the student's performance. The student's name is ${settings.name}. Be specific and actionable.
 
-IMPORTANT: The student is practicing ${selectedLang}. Analyze what they ACTUALLY said in the audio, not just what the text transcript shows (the transcript below may contain errors).
+The audio contains a conversation between a language tutor and a student practicing ${selectedLang}. Transcribe what you hear and analyze the student's performance based ONLY on the audio.
 
-The text transcript is included as supplementary context but the audio is the primary source:
-${convoText}
+Note: When the student reads text from the screen to ask "what does this mean?", that is NOT a pronunciation error — they are asking for help understanding written text.
 
 Review format:
 1. **Mistakes made**: List each grammar/vocabulary error you HEAR, what was said vs correct, and WHY. Include timestamps.
-2. **New vocabulary**: Words/phrases to learn, with etymology when interesting.
+2. **New vocabulary**: Words/phrases the student learned or was exposed to, with etymology when interesting.
 3. **Patterns to drill**: Recurring weak points for next session.
-4. **Progress notes**: What went well.${pitchSection}
-6. **Audio verification**: Quote 3 specific things you heard in the audio that differ from or are not visible in the text transcript. This proves the audio was analyzed.`;
+4. **Progress notes**: What went well — credit the student for things they said correctly.${pitchSection}${levelAssessSection}`;
   } else {
     // Fallback: text-only review (no audio captured)
     reviewPrompt = `Review this ${selectedLang} practice conversation. Be specific and actionable.
@@ -4695,7 +4720,7 @@ NOTE: The student's speech transcription may contain errors — random words fro
 1. **Mistakes made**: List each grammar/vocabulary error, what was said vs correct, and WHY.
 2. **New vocabulary**: Words/phrases to learn, with etymology when interesting.
 3. **Patterns to drill**: Recurring weak points for next session.
-4. **Progress notes**: What went well.${pitchSection}
+4. **Progress notes**: What went well.${pitchSection}${levelAssessSection}
 
 Conversation:
 ${convoText}`;
@@ -4712,6 +4737,18 @@ ${convoText}`;
     const data = await response.json();
     if (data.error) { document.getElementById('reviewBody').innerHTML = `<p>Review error: ${data.error.message}</p>`; return; }
     reviewMarkdown = data.candidates?.[0]?.content?.parts?.[0]?.text || 'No review generated.';
+
+    // Extract assessed level from review (first 3 sessions per language)
+    const levelMatch = reviewMarkdown.match(/ASSESSED_LEVEL:\s*(beginner|intermediate|heritage|advanced)/i);
+    if (levelMatch) {
+      const assessed = levelMatch[1].toLowerCase();
+      const previous = getLangLevel(selectedLang);
+      setLangLevel(selectedLang, assessed);
+      if (assessed !== previous) {
+        console.log(`Level updated for ${selectedLang}: ${previous} → ${assessed}`);
+      }
+    }
+
     autoDownloadReview(settings, lang);
     const audioTag = hasAudio && parts.length > 1
       ? '<div style="font-family:var(--mono);font-size:10px;color:var(--green);margin-bottom:12px;">&#127911; Review generated from session audio</div>'
